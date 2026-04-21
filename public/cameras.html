@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alarm Panel — Cameras</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 id="page-title">Loading&hellip;</h1>
+    <p class="subtitle">Live snapshots from connected cameras.</p>
+  </header>
+
+  <nav>
+    <a href="/">Alerts</a>
+    <a href="/bells.html">Bells</a>
+    <a href="/cameras.html" class="active">Cameras</a>
+    <a href="/status.html">Status</a>
+    <a href="/settings.html" class="nav-right">&#9881; Settings</a>
+  </nav>
+
+  <!-- Login -->
+  <div id="login-section" style="display:none">
+    <div class="card narrow">
+      <h2>Staff Login</h2>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') login()">
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="login()">Login</button>
+      </div>
+      <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main-section" style="display:none">
+    <main>
+      <div class="refresh-toolbar">
+        <button class="btn btn-secondary" onclick="loadCameras()">&#8635; Refresh All</button>
+        <label style="text-transform:none;letter-spacing:0;font-size:0.875rem;color:var(--text-muted);display:flex;align-items:center;gap:8px">
+          Auto-refresh:
+          <select id="refresh-interval" onchange="setRefreshInterval()" style="width:auto">
+            <option value="0">Off</option>
+            <option value="10">10 s</option>
+            <option value="30" selected>30 s</option>
+            <option value="60">60 s</option>
+          </select>
+        </label>
+        <span id="last-refresh" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto"></span>
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+      </div>
+
+      <div id="camera-grid" class="camera-grid">
+        <p style="color:var(--text-muted)">Loading cameras…</p>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script>
+    let refreshTimer = null;
+    let cameraList   = [];
+
+    // ── Auth ──
+
+    async function init() {
+      const status = await apiFetch('/api/auth/user-status');
+      if (status && status.authenticated) {
+        showMain();
+      } else {
+        document.getElementById('login-section').style.display = '';
+        setTimeout(() => document.getElementById('login-password').focus(), 50);
+      }
+    }
+
+    async function login() {
+      const password = document.getElementById('login-password').value;
+      const data     = await apiFetch('/api/auth/user-login', 'POST', { password });
+      if (data && data.ok) {
+        document.getElementById('login-error').style.display   = 'none';
+        document.getElementById('login-section').style.display = 'none';
+        showMain();
+      } else {
+        document.getElementById('login-error').style.display = '';
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-password').focus();
+      }
+    }
+
+    async function logout() {
+      await apiFetch('/api/auth/user-logout', 'POST');
+      clearInterval(refreshTimer);
+      document.getElementById('main-section').style.display   = 'none';
+      document.getElementById('login-password').value         = '';
+      document.getElementById('login-error').style.display    = 'none';
+      document.getElementById('login-section').style.display  = '';
+      document.getElementById('login-password').focus();
+    }
+
+    async function showMain() {
+      const cfg = await apiFetch('/api/config/public');
+      if (cfg) {
+        document.title = `${cfg.schoolName} — Cameras`;
+        document.getElementById('page-title').textContent = `${cfg.schoolName} — Cameras`;
+      }
+      document.getElementById('main-section').style.display = '';
+      loadCameras();
+      setRefreshInterval();
+    }
+
+    // ── Cameras ──
+
+    async function loadCameras() {
+      const data = await apiFetch('/api/cameras');
+      if (!data || data.error) {
+        document.getElementById('camera-grid').innerHTML =
+          `<p class="error-text">${esc(data?.error || 'Failed to load cameras')}</p>`;
+        return;
+      }
+      cameraList = Array.isArray(data) ? data : [];
+      if (!cameraList.length) {
+        document.getElementById('camera-grid').innerHTML =
+          '<p style="color:var(--text-muted)">No cameras found on controller.</p>';
+        return;
+      }
+      renderCameras();
+      document.getElementById('last-refresh').textContent =
+        'Updated: ' + new Date().toLocaleTimeString();
+    }
+
+    function renderCameras() {
+      document.getElementById('camera-grid').innerHTML = cameraList.map(cam => {
+        const online = cam.state === 'CONNECTED';
+        return `
+          <div class="camera-card">
+            <div class="camera-card-header">
+              <span style="font-weight:600;font-size:0.9rem">${esc(cam.name)}</span>
+              <span style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-muted)">
+                <span class="status-dot ${online ? 'online' : 'offline'}"></span>
+                ${online ? 'Online' : 'Offline'}
+              </span>
+            </div>
+            <div class="camera-snapshot-wrap">
+              ${online
+                ? `<img class="camera-snapshot" src="/api/cameras/${cam.id}/snapshot"
+                     alt="${esc(cam.name)}"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                     onload="this.nextElementSibling.style.display='none'">
+                   <div class="camera-snapshot-placeholder" style="display:none">Snapshot unavailable</div>`
+                : `<div class="camera-snapshot-placeholder">Camera offline</div>`
+              }
+            </div>
+            <div class="camera-card-footer">
+              <span style="color:var(--text-muted)">${esc(cam.type || cam.modelKey || '')}</span>
+              ${cam.host ? `<span style="margin-left:auto;font-family:monospace">${esc(cam.host)}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setRefreshInterval() {
+      clearInterval(refreshTimer);
+      const secs = parseInt(document.getElementById('refresh-interval').value);
+      if (secs > 0) {
+        refreshTimer = setInterval(loadCameras, secs * 1000);
+      }
+    }
+
+    // ── Utilities ──
+
+    async function apiFetch(url, method = 'GET', body) {
+      try {
+        const opts = { method, headers: {} };
+        if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        const res = await fetch(url, opts);
+        return res.json();
+      } catch (err) {
+        toast('Network error: ' + err.message, 'error');
+        return null;
+      }
+    }
+
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast${type ? ' ' + type : ''} show`;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 4500);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alarm Panel — Status</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 id="page-title">Loading&hellip;</h1>
+    <p class="subtitle">Live status of all connected UniFi devices.</p>
+  </header>
+
+  <nav>
+    <a href="/">Alerts</a>
+    <a href="/bells.html">Bells</a>
+    <a href="/cameras.html">Cameras</a>
+    <a href="/status.html" class="active">Status</a>
+    <a href="/settings.html" class="nav-right">&#9881; Settings</a>
+  </nav>
+
+  <!-- Login -->
+  <div id="login-section" style="display:none">
+    <div class="card narrow">
+      <h2>Staff Login</h2>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') login()">
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="login()">Login</button>
+      </div>
+      <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main-section" style="display:none">
+    <main>
+      <div class="refresh-toolbar">
+        <button class="btn btn-secondary" onclick="loadStatus()">&#8635; Refresh</button>
+        <span id="last-refresh" style="font-size:0.8rem;color:var(--text-muted)"></span>
+        <span id="auto-refresh-label" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto">Auto-refreshes every 30s</span>
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+      </div>
+
+      <!-- NVR -->
+      <div class="card status-section">
+        <h2>NVR / Controller</h2>
+        <div id="nvr-info"><p class="hint">Loading…</p></div>
+      </div>
+
+      <!-- Cameras -->
+      <div class="card status-section">
+        <h2>Cameras <span id="camera-count" class="device-count"></span></h2>
+        <div id="cameras-status"><p class="hint">Loading…</p></div>
+      </div>
+
+      <!-- Chimes / Horns -->
+      <div class="card status-section">
+        <h2>Chimes &amp; Horns <span id="chime-count" class="device-count"></span></h2>
+        <div id="chimes-status"><p class="hint">Loading…</p></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script>
+    let refreshTimer = null;
+
+    // ── Auth ──
+
+    async function init() {
+      const status = await apiFetch('/api/auth/user-status');
+      if (status && status.authenticated) {
+        showMain();
+      } else {
+        document.getElementById('login-section').style.display = '';
+        setTimeout(() => document.getElementById('login-password').focus(), 50);
+      }
+    }
+
+    async function login() {
+      const password = document.getElementById('login-password').value;
+      const data     = await apiFetch('/api/auth/user-login', 'POST', { password });
+      if (data && data.ok) {
+        document.getElementById('login-error').style.display   = 'none';
+        document.getElementById('login-section').style.display = 'none';
+        showMain();
+      } else {
+        document.getElementById('login-error').style.display = '';
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-password').focus();
+      }
+    }
+
+    async function logout() {
+      await apiFetch('/api/auth/user-logout', 'POST');
+      clearInterval(refreshTimer);
+      document.getElementById('main-section').style.display   = 'none';
+      document.getElementById('login-password').value         = '';
+      document.getElementById('login-error').style.display    = 'none';
+      document.getElementById('login-section').style.display  = '';
+      document.getElementById('login-password').focus();
+    }
+
+    async function showMain() {
+      const cfg = await apiFetch('/api/config/public');
+      if (cfg) {
+        document.title = `${cfg.schoolName} — Status`;
+        document.getElementById('page-title').textContent = `${cfg.schoolName} — Status`;
+      }
+      document.getElementById('main-section').style.display = '';
+      loadStatus();
+      refreshTimer = setInterval(loadStatus, 30000);
+    }
+
+    // ── Status ──
+
+    async function loadStatus() {
+      const data = await apiFetch('/api/devices/status');
+      if (!data) return;
+
+      document.getElementById('last-refresh').textContent =
+        'Updated: ' + new Date().toLocaleTimeString();
+
+      if (data.errors && data.errors.length) {
+        toast(data.errors[0], 'error');
+      }
+
+      renderNvr(data.nvr);
+      renderCameras(data.cameras || []);
+      renderChimes(data.chimes || []);
+    }
+
+    function renderNvr(nvr) {
+      const el = document.getElementById('nvr-info');
+      if (!nvr) { el.innerHTML = '<p class="hint">NVR info unavailable.</p>'; return; }
+      const stats = [
+        { label: 'Name',        value: nvr.name        || '—' },
+        { label: 'Version',     value: nvr.version      || '—' },
+        { label: 'Host',        value: nvr.host         || '—' },
+        { label: 'Uptime',      value: nvr.uptime != null ? fmtUptime(nvr.uptime) : '—' },
+        { label: 'Cameras',     value: nvr.cameraCount  ?? '—' },
+        { label: 'Recording',   value: nvr.isRecording  ? 'Yes' : 'No' },
+      ];
+      el.innerHTML = `<div class="nvr-info-grid">${stats.map(s => `
+        <div class="nvr-stat">
+          <div class="nvr-stat-label">${esc(s.label)}</div>
+          <div class="nvr-stat-value">${esc(String(s.value))}</div>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    function renderCameras(cameras) {
+      document.getElementById('camera-count').textContent =
+        `(${cameras.filter(c => c.state === 'CONNECTED').length}/${cameras.length} online)`;
+
+      const el = document.getElementById('cameras-status');
+      if (!cameras.length) { el.innerHTML = '<p class="hint">No cameras found.</p>'; return; }
+
+      el.innerHTML = `
+        <div class="table-wrap" style="margin-bottom:0">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Model</th><th>IP</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${cameras.map(c => {
+                const online = c.state === 'CONNECTED';
+                return `<tr>
+                  <td>${esc(c.name)}</td>
+                  <td style="color:var(--text-muted);font-size:0.82rem">${esc(c.type || c.modelKey || '—')}</td>
+                  <td style="font-family:monospace;font-size:0.82rem">${esc(c.host || '—')}</td>
+                  <td>
+                    <span style="display:flex;align-items:center;gap:6px">
+                      <span class="status-dot ${online ? 'online' : 'offline'}"></span>
+                      <span class="${online ? 'yes' : 'no'}">${online ? 'Online' : 'Offline'}</span>
+                    </span>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function renderChimes(chimes) {
+      document.getElementById('chime-count').textContent =
+        `(${chimes.filter(c => c.state === 'CONNECTED').length}/${chimes.length} online)`;
+
+      const el = document.getElementById('chimes-status');
+      if (!chimes.length) { el.innerHTML = '<p class="hint">No chimes or horns found.</p>'; return; }
+
+      el.innerHTML = `
+        <div class="table-wrap" style="margin-bottom:0">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Model</th><th>Volume</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${chimes.map(c => {
+                const online = c.state === 'CONNECTED';
+                return `<tr>
+                  <td>${esc(c.name)}</td>
+                  <td style="color:var(--text-muted);font-size:0.82rem">${esc(c.type || c.modelKey || '—')}</td>
+                  <td>${c.volume != null ? c.volume + '%' : '—'}</td>
+                  <td>
+                    <span style="display:flex;align-items:center;gap:6px">
+                      <span class="status-dot ${online ? 'online' : 'offline'}"></span>
+                      <span class="${online ? 'yes' : 'no'}">${online ? 'Online' : 'Offline'}</span>
+                    </span>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    // ── Utilities ──
+
+    function fmtUptime(seconds) {
+      const d = Math.floor(seconds / 86400);
+      const h = Math.floor((seconds % 86400) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      if (d > 0) return `${d}d ${h}h`;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    }
+
+    async function apiFetch(url, method = 'GET', body) {
+      try {
+        const opts = { method, headers: {} };
+        if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        const res = await fetch(url, opts);
+        return res.json();
+      } catch (err) {
+        toast('Network error: ' + err.message, 'error');
+        return null;
+      }
+    }
+
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast${type ? ' ' + type : ''} show`;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 4500);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>

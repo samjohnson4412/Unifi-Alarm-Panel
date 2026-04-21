@@ -410,6 +410,165 @@ footer {
   color: var(--text-muted);
 }
 
+/* ── Camera grid ── */
+
+.camera-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.camera-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.camera-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.camera-snapshot-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #000;
+}
+
+.camera-snapshot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-snapshot-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.camera-card-footer {
+  display: flex;
+  align-items: center;
+  padding: 9px 14px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── Status page ── */
+
+.status-section { margin-bottom: 0; }
+
+.device-count {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.nvr-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.nvr-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 14px;
+}
+
+.nvr-stat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.nvr-stat-value { font-size: 0.95rem; font-weight: 600; }
+
+/* ── Status dots ── */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status-dot.online  { background: var(--success); }
+.status-dot.offline { background: var(--danger); }
+
+/* ── Volume sliders ── */
+
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.volume-row:last-child { border-bottom: none; }
+
+.volume-device-name { flex: 1; font-size: 0.9rem; min-width: 100px; }
+
+.volume-slider {
+  flex: 2;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  min-width: 80px;
+}
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+}
+
+.volume-value {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  min-width: 30px;
+  text-align: right;
+}
+
+/* ── Refresh toolbar ── */
+
+.refresh-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
 /* ── Mobile ── */
 
 @media (max-width: 640px) {
@@ -549,4 +708,25 @@ footer {
     bottom: 16px;
     max-width: 100%;
   }
+
+  /* Camera grid — single column */
+  .camera-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* NVR stats — 2 columns */
+  .nvr-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Volume rows — stack slider below name */
+  .volume-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .volume-device-name { flex: 1 1 100%; }
+  .volume-slider { flex: 1; }
+
+  /* Refresh toolbar */
+  .refresh-toolbar { gap: 8px; }
 }

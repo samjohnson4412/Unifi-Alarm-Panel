@@ -181,6 +181,22 @@ function initSchedules() {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
+// Shared UniFi proxy helper
+async function unifiGet(path) {
+  const c = loadConfig();
+  if (!c.controllerIP || !c.apiKey) throw new Error('Controller not configured — visit Settings.');
+  const r = await fetch(`https://${c.controllerIP}/proxy/protect/integration/v1${path}`, {
+    headers: { 'X-API-KEY': c.apiKey, 'Accept': 'application/json' },
+    agent:   httpsAgent,
+    timeout: 10000,
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => '');
+    throw new Error(`HTTP ${r.status}${text ? ': ' + text.slice(0, 120) : ''}`);
+  }
+  return r.json();
+}
+
 app.get('/api/config/public', (req, res) => {
   const c = loadConfig();
   res.json({
@@ -294,6 +310,72 @@ app.post('/api/bells/:id/toggle', requireUserAuth, (req, res) => {
   saveBells(bells);
   scheduleBell(bells[idx]);
   res.json(bells[idx]);
+});
+
+// ── Chimes (admin auth — settings page) ──────────────────────────────────────
+
+app.get('/api/chimes', requireAuth, async (req, res) => {
+  try { res.json(await unifiGet('/chimes')); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/chimes/:id/volume', requireAuth, async (req, res) => {
+  const c = loadConfig();
+  if (!c.controllerIP || !c.apiKey) return res.status(503).json({ error: 'Controller not configured' });
+  try {
+    const r = await fetch(`https://${c.controllerIP}/proxy/protect/integration/v1/chimes/${req.params.id}`, {
+      method:  'PATCH',
+      headers: { 'X-API-KEY': c.apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body:    JSON.stringify({ volume: Number(req.body.volume) }),
+      agent:   httpsAgent,
+      timeout: 10000,
+    });
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      return res.status(r.status).json({ error: `HTTP ${r.status}: ${text.slice(0, 200)}` });
+    }
+    res.json(await r.json().catch(() => ({ ok: true })));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Cameras & snapshots (user auth) ──────────────────────────────────────────
+
+app.get('/api/cameras', requireUserAuth, async (req, res) => {
+  try { res.json(await unifiGet('/cameras')); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/cameras/:id/snapshot', requireUserAuth, async (req, res) => {
+  const c = loadConfig();
+  if (!c.controllerIP || !c.apiKey) return res.status(503).send('Controller not configured');
+  try {
+    const r = await fetch(
+      `https://${c.controllerIP}/proxy/protect/api/cameras/${req.params.id}/snapshot`,
+      { headers: { 'X-API-KEY': c.apiKey }, agent: httpsAgent, timeout: 15000 }
+    );
+    if (!r.ok) return res.status(r.status).send(`HTTP ${r.status}`);
+    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'no-cache, no-store');
+    r.body.pipe(res);
+  } catch (err) { res.status(500).send(err.message); }
+});
+
+// ── Device status (user auth) ─────────────────────────────────────────────────
+
+app.get('/api/devices/status', requireUserAuth, async (req, res) => {
+  const [cameras, chimes, nvr] = await Promise.allSettled([
+    unifiGet('/cameras'),
+    unifiGet('/chimes'),
+    unifiGet('/nvr'),
+  ]);
+  res.json({
+    cameras: cameras.status === 'fulfilled' ? cameras.value : [],
+    chimes:  chimes.status  === 'fulfilled' ? chimes.value  : [],
+    nvr:     nvr.status     === 'fulfilled' ? nvr.value     : null,
+    errors:  [cameras, chimes, nvr]
+      .filter(r => r.status === 'rejected')
+      .map(r => r.reason.message),
+  });
 });
 
 // Auth — user (alerts + bells pages)
