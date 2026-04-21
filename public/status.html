@@ -131,21 +131,13 @@
 
     function renderNvr(nvr) {
       const el = document.getElementById('nvr-info');
-      if (!nvr) { el.innerHTML = '<p class="hint">NVR info unavailable.</p>'; return; }
-      const stats = [
-        { label: 'Name',      value: nvr.name                                           || '—' },
-        { label: 'Version',   value: nvr.version   || nvr.firmwareVersion               || '—' },
-        { label: 'Host',      value: nvr.host       || nvr.ip                           || '—' },
-        { label: 'Uptime',    value: nvr.uptime != null ? fmtUptime(nvr.uptime) : (nvr.uptimeInSeconds != null ? fmtUptime(nvr.uptimeInSeconds) : '—') },
-        { label: 'Cameras',   value: nvr.cameraCount ?? nvr.cameras?.length             ?? '—' },
-        { label: 'Recording', value: nvr.isRecording != null ? (nvr.isRecording ? 'Yes' : 'No') : '—' },
-      ];
-      el.innerHTML = `<div class="nvr-info-grid">${stats.map(s => `
+      if (!nvr || !nvr.applicationVersion) { el.innerHTML = '<p class="hint">NVR info unavailable.</p>'; return; }
+      el.innerHTML = `<div class="nvr-info-grid">
         <div class="nvr-stat">
-          <div class="nvr-stat-label">${esc(s.label)}</div>
-          <div class="nvr-stat-value">${esc(String(s.value))}</div>
+          <div class="nvr-stat-label">Version</div>
+          <div class="nvr-stat-value">${esc(nvr.applicationVersion)}</div>
         </div>
-      `).join('')}</div>`;
+      </div>`;
     }
 
     function renderCameras(cameras) {
@@ -159,7 +151,7 @@
         <div class="table-wrap" style="margin-bottom:0">
           <table>
             <thead>
-              <tr><th>Name</th><th>Model</th><th>IP</th><th>Status</th></tr>
+              <tr><th>Name</th><th>Model</th><th>MAC</th><th>Status</th></tr>
             </thead>
             <tbody>
               ${cameras.map(c => {
@@ -167,7 +159,7 @@
                 return `<tr>
                   <td>${esc(c.name)}</td>
                   <td style="color:var(--text-muted);font-size:0.82rem">${esc(c.type || c.modelKey || '—')}</td>
-                  <td style="font-family:monospace;font-size:0.82rem">${esc(c.host || '—')}</td>
+                  <td style="font-family:monospace;font-size:0.82rem">${esc(c.mac || '—')}</td>
                   <td>
                     <span style="display:flex;align-items:center;gap:6px">
                       <span class="status-dot ${online ? 'online' : 'offline'}"></span>
