@@ -346,7 +346,7 @@ app.get('/api/cameras/:id/snapshot', requireUserAuth, async (req, res) => {
 app.get('/api/devices/status', requireUserAuth, async (req, res) => {
   const [camerasRes, nvrRes] = await Promise.allSettled([
     unifiGet('/cameras').then(toArray),
-    unifiGet('/nvr'),
+    unifiGet('/meta/info'),
   ]);
   res.json({
     cameras: camerasRes.status === 'fulfilled' ? camerasRes.value : [],

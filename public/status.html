@@ -133,12 +133,12 @@
       const el = document.getElementById('nvr-info');
       if (!nvr) { el.innerHTML = '<p class="hint">NVR info unavailable.</p>'; return; }
       const stats = [
-        { label: 'Name',        value: nvr.name        || '—' },
-        { label: 'Version',     value: nvr.version      || '—' },
-        { label: 'Host',        value: nvr.host         || '—' },
-        { label: 'Uptime',      value: nvr.uptime != null ? fmtUptime(nvr.uptime) : '—' },
-        { label: 'Cameras',     value: nvr.cameraCount  ?? '—' },
-        { label: 'Recording',   value: nvr.isRecording  ? 'Yes' : 'No' },
+        { label: 'Name',      value: nvr.name                                           || '—' },
+        { label: 'Version',   value: nvr.version   || nvr.firmwareVersion               || '—' },
+        { label: 'Host',      value: nvr.host       || nvr.ip                           || '—' },
+        { label: 'Uptime',    value: nvr.uptime != null ? fmtUptime(nvr.uptime) : (nvr.uptimeInSeconds != null ? fmtUptime(nvr.uptimeInSeconds) : '—') },
+        { label: 'Cameras',   value: nvr.cameraCount ?? nvr.cameras?.length             ?? '—' },
+        { label: 'Recording', value: nvr.isRecording != null ? (nvr.isRecording ? 'Yes' : 'No') : '—' },
       ];
       el.innerHTML = `<div class="nvr-info-grid">${stats.map(s => `
         <div class="nvr-stat">
