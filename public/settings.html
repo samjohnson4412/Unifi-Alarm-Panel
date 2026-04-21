@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alarm Panel — Settings</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Settings</h1>
+  </header>
+
+  <nav>
+    <a href="/">Alerts</a>
+    <a href="/bells.html">Bells</a>
+    <a href="/settings.html" class="active nav-right">&#9881; Settings</a>
+  </nav>
+
+  <main>
+    <!-- ── Login ── -->
+    <div id="login-section">
+      <div class="card narrow">
+        <h2>Admin Login</h2>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter') login()">
+        </div>
+        <div class="form-actions">
+          <button class="btn" onclick="login()">Login</button>
+        </div>
+        <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
+      </div>
+    </div>
+
+    <!-- ── Settings ── -->
+    <div id="settings-section" style="display:none">
+
+      <div class="settings-grid">
+
+        <!-- General -->
+        <div class="card">
+          <h2>General</h2>
+          <div class="form-group">
+            <label for="school-name">School Name</label>
+            <input type="text" id="school-name" placeholder="Delphi Academy">
+          </div>
+        </div>
+
+        <!-- UniFi Controller -->
+        <div class="card">
+          <h2>UniFi Controller</h2>
+          <div class="form-group">
+            <label for="controller-ip">Controller IP / Hostname</label>
+            <input type="text" id="controller-ip" placeholder="192.168.1.1">
+            <span class="hint">Used in: https://&lt;IP&gt;/proxy/protect/integration/v1/…</span>
+          </div>
+          <div class="form-group">
+            <label for="api-key">API Key</label>
+            <div class="input-row">
+              <input type="password" id="api-key" placeholder="Paste API key here" autocomplete="off">
+              <button class="btn btn-sm btn-secondary" id="toggle-key-btn" onclick="toggleApiKey()">Show</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bell Sound -->
+        <div class="card">
+          <h2>Bell Chime ID</h2>
+          <div class="form-group">
+            <label for="bell-sound-id">Default Chime Device ID</label>
+            <input type="text" id="bell-sound-id" placeholder="e.g. 5f3d2a1b0c9e8f7a">
+            <span class="hint">
+              Shared by all scheduled bells. Find IDs with:<br>
+              <code style="font-size:0.75rem">GET /proxy/protect/integration/v1/chimes</code>
+            </span>
+          </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="card">
+          <h2>Change Password</h2>
+          <div class="form-group">
+            <label for="new-password">New Password</label>
+            <input type="password" id="new-password" placeholder="Leave blank to keep current" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">Confirm New Password</label>
+            <input type="password" id="confirm-password" autocomplete="new-password">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Alarm Chime IDs -->
+      <div class="card">
+        <h2>Alarm Chime IDs</h2>
+        <p class="hint" style="margin-bottom:14px">
+          Enter the UniFi chime device ID to trigger for each alarm type.
+          Leave blank if that alarm is not yet in use.
+        </p>
+        <div class="table-wrap" style="margin-bottom:0">
+          <table class="alarm-config-table">
+            <thead>
+              <tr>
+                <th>Alarm</th>
+                <th>Chime Device ID</th>
+              </tr>
+            </thead>
+            <tbody id="alarm-config-tbody">
+              <!-- populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="form-actions" style="margin-top:4px">
+        <button class="btn" onclick="saveSettings()">Save All Settings</button>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script>
+    // ── Utilities ──
+
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast${type ? ' ' + type : ''} show`;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 4500);
+    }
+
+    async function apiFetch(url, method = 'GET', body) {
+      try {
+        const opts = { method, headers: {} };
+        if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        return await fetch(url, opts);
+      } catch (err) {
+        toast('Network error: ' + err.message, 'error');
+        return null;
+      }
+    }
+
+    // ── Auth ──
+
+    async function checkAuth() {
+      const res  = await apiFetch('/api/auth/status');
+      const data = res ? await res.json() : null;
+      if (data && data.authenticated) {
+        loadSettings();
+      } else {
+        document.getElementById('login-section').style.display = '';
+        document.getElementById('settings-section').style.display = 'none';
+      }
+    }
+
+    async function login() {
+      const password = document.getElementById('login-password').value;
+      const res      = await apiFetch('/api/auth/login', 'POST', { password });
+      if (!res) return;
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('login-error').style.display = 'none';
+        document.getElementById('login-section').style.display = 'none';
+        loadSettings();
+      } else {
+        document.getElementById('login-error').style.display = '';
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-password').focus();
+      }
+    }
+
+    async function logout() {
+      await apiFetch('/api/auth/logout', 'POST');
+      document.getElementById('settings-section').style.display = 'none';
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-error').style.display = 'none';
+      document.getElementById('login-section').style.display = '';
+      document.getElementById('login-password').focus();
+    }
+
+    // ── Settings ──
+
+    async function loadSettings() {
+      const res = await apiFetch('/api/settings');
+      if (!res || res.status === 401) { checkAuth(); return; }
+      const cfg = await res.json();
+
+      document.getElementById('school-name').value    = cfg.schoolName    || '';
+      document.getElementById('controller-ip').value  = cfg.controllerIP  || '';
+      document.getElementById('api-key').value        = cfg.apiKey        || '';
+      document.getElementById('bell-sound-id').value  = cfg.bellSoundId   || '';
+
+      const tbody = document.getElementById('alarm-config-tbody');
+      tbody.innerHTML = (cfg.alarms || []).map(a => `
+        <tr>
+          <td>${escHtml(a.label)}</td>
+          <td>
+            <input type="text" class="alarm-sound-input" data-alarm-id="${a.id}"
+              value="${escHtml(a.soundId || '')}" placeholder="chime-device-id">
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('settings-section').style.display = '';
+    }
+
+    function toggleApiKey() {
+      const input = document.getElementById('api-key');
+      const btn   = document.getElementById('toggle-key-btn');
+      if (input.type === 'password') { input.type = 'text';     btn.textContent = 'Hide'; }
+      else                           { input.type = 'password'; btn.textContent = 'Show'; }
+    }
+
+    async function saveSettings() {
+      const newPw  = document.getElementById('new-password').value;
+      const confPw = document.getElementById('confirm-password').value;
+      if (newPw && newPw !== confPw) { toast('Passwords do not match', 'error'); return; }
+
+      const alarms = [...document.querySelectorAll('.alarm-sound-input')].map(inp => ({
+        id:      inp.dataset.alarmId,
+        soundId: inp.value.trim(),
+      }));
+
+      const body = {
+        schoolName:   document.getElementById('school-name').value.trim(),
+        controllerIP: document.getElementById('controller-ip').value.trim(),
+        apiKey:       document.getElementById('api-key').value.trim(),
+        bellSoundId:  document.getElementById('bell-sound-id').value.trim(),
+        alarms,
+      };
+      if (newPw) body.password = newPw;
+
+      const res = await apiFetch('/api/settings', 'PUT', body);
+      if (!res) return;
+      if (res.ok) {
+        toast('Settings saved successfully', 'success');
+        document.getElementById('new-password').value    = '';
+        document.getElementById('confirm-password').value = '';
+      } else {
+        toast('Failed to save settings', 'error');
+      }
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    checkAuth();
+  </script>
+</body>
+</html>

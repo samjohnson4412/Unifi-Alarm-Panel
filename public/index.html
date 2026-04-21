@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alarm Panel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 id="page-title">Loading&hellip;</h1>
+    <p class="subtitle">Click a button to trigger the alarm.</p>
+  </header>
+
+  <nav>
+    <a href="/" class="active">Alerts</a>
+    <a href="/bells.html">Bells</a>
+    <a href="/settings.html" class="nav-right">&#9881; Settings</a>
+  </nav>
+
+  <main>
+    <div class="toolbar">
+      <button class="btn btn-secondary" id="check-btn" onclick="checkUnifi()">Check UniFi API</button>
+      <span id="check-status" class="status-text">Waiting&hellip;</span>
+    </div>
+
+    <div class="alarm-grid" id="alarm-grid">
+      <!-- populated by JS -->
+    </div>
+  </main>
+
+  <footer>V2.0 &mdash; Sam Johnson</footer>
+
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script>
+    async function init() {
+      const data = await apiFetch('/api/config/public');
+      if (!data) return;
+      document.title = `${data.schoolName} — Alerts`;
+      document.getElementById('page-title').textContent = `${data.schoolName} — Alerts`;
+      renderAlarms(data.alarms);
+    }
+
+    function renderAlarms(alarms) {
+      document.getElementById('alarm-grid').innerHTML = alarms.map(a => `
+        <button
+          class="btn btn-alarm${a.isDrill ? '' : ' real'}"
+          data-id="${a.id}"
+          ${!a.configured ? 'title="Chime ID not configured — visit Settings"' : ''}
+        >${esc(a.label)}</button>
+      `).join('');
+
+      document.getElementById('alarm-grid').addEventListener('click', e => {
+        const btn = e.target.closest('.btn-alarm');
+        if (btn) triggerAlarm(btn.dataset.id, btn);
+      });
+    }
+
+    async function triggerAlarm(id, btn) {
+      btn.disabled = true;
+      const orig = btn.textContent;
+      btn.textContent = 'Triggering…';
+      try {
+        const data = await apiFetch(`/api/alarm/${id}`, 'POST');
+        if (data) {
+          if (data.ok) toast(data.message, 'success');
+          else toast(data.error || 'Failed', 'error');
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+      }
+    }
+
+    async function checkUnifi() {
+      const btn    = document.getElementById('check-btn');
+      const status = document.getElementById('check-status');
+      btn.disabled = true;
+      status.textContent = 'Checking…';
+      status.className = 'status-text';
+      try {
+        const data = await apiFetch('/api/check-unifi');
+        if (data) {
+          status.textContent = data.message;
+          status.className   = `status-text ${data.ok ? 'ok' : 'error'}`;
+        }
+      } catch {
+        status.textContent = 'Network error';
+        status.className   = 'status-text error';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function apiFetch(url, method = 'GET', body) {
+      try {
+        const opts = { method, headers: {} };
+        if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        const res = await fetch(url, opts);
+        return res.json();
+      } catch (err) {
+        toast('Network error: ' + err.message, 'error');
+        return null;
+      }
+    }
+
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast${type ? ' ' + type : ''} show`;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 4500);
+    }
+
+    function esc(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>

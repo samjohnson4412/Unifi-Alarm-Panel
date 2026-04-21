@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alarm Panel — Bells</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 id="page-title">Loading&hellip;</h1>
+    <p class="subtitle">Create and manage scheduled bells.</p>
+  </header>
+
+  <nav>
+    <a href="/">Alerts</a>
+    <a href="/bells.html" class="active">Bells</a>
+    <a href="/settings.html" class="nav-right">&#9881; Settings</a>
+  </nav>
+
+  <main>
+    <!-- ── Add / Edit form ── -->
+    <div class="card">
+      <input type="hidden" id="editing-id">
+
+      <div class="form-row">
+        <div class="form-group flex-3">
+          <label for="bell-name">Bell Name</label>
+          <input type="text" id="bell-name" placeholder="1st Period Start">
+        </div>
+        <div class="form-group flex-1">
+          <label for="bell-time">Time</label>
+          <input type="time" id="bell-time" value="08:00">
+        </div>
+        <div class="form-group flex-1">
+          <label for="bell-enabled">Enabled</label>
+          <select id="bell-enabled">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Days of Week</label>
+        <div class="day-checkboxes">
+          <label><input type="checkbox" name="day" value="0"> Sun</label>
+          <label><input type="checkbox" name="day" value="1" checked> Mon</label>
+          <label><input type="checkbox" name="day" value="2" checked> Tue</label>
+          <label><input type="checkbox" name="day" value="3" checked> Wed</label>
+          <label><input type="checkbox" name="day" value="4" checked> Thu</label>
+          <label><input type="checkbox" name="day" value="5" checked> Fri</label>
+          <label><input type="checkbox" name="day" value="6"> Sat</label>
+        </div>
+        <div class="day-shortcuts">
+          <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5])">Mon&ndash;Fri</button>
+          <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5,6])">Mon&ndash;Sat</button>
+          <button class="btn btn-sm btn-secondary" onclick="setDays([0,1,2,3,4,5,6])">All Week</button>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn" id="save-btn" onclick="saveBell()">Save</button>
+        <button class="btn btn-secondary" id="cancel-btn" style="display:none" onclick="cancelEdit()">Cancel</button>
+      </div>
+
+      <div class="cron-preview" id="cron-preview"></div>
+    </div>
+
+    <!-- ── Bells table ── -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Time</th>
+            <th>Days</th>
+            <th>Enabled</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="bells-tbody">
+          <tr><td colspan="5" class="td-empty">No bells scheduled yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script>
+    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    // ── Utilities ──
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast${type ? ' ' + type : ''} show`;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 4500);
+    }
+
+    async function apiFetch(url, method = 'GET', body) {
+      try {
+        const opts = { method, headers: {} };
+        if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        const res = await fetch(url, opts);
+        return res.json();
+      } catch (err) {
+        toast('Network error: ' + err.message, 'error');
+        return null;
+      }
+    }
+
+    // ── Day helpers ──
+
+    function setDays(selected) {
+      document.querySelectorAll('input[name="day"]').forEach(cb => {
+        cb.checked = selected.includes(parseInt(cb.value));
+      });
+      updateCronPreview();
+    }
+
+    function getSelectedDays() {
+      return [...document.querySelectorAll('input[name="day"]:checked')]
+        .map(cb => parseInt(cb.value));
+    }
+
+    function formatDays(days) {
+      if (!days || !days.length) return 'Every day';
+      const s = [...days].sort((a,b)=>a-b);
+      if (JSON.stringify(s) === JSON.stringify([0,1,2,3,4,5,6])) return 'Every day';
+      if (JSON.stringify(s) === JSON.stringify([1,2,3,4,5]))     return 'Mon–Fri';
+      if (JSON.stringify(s) === JSON.stringify([1,2,3,4,5,6]))   return 'Mon–Sat';
+      return s.map(d => DAY_NAMES[d]).join(', ');
+    }
+
+    function updateCronPreview() {
+      const time = document.getElementById('bell-time').value;
+      const days = getSelectedDays();
+      if (!time) { document.getElementById('cron-preview').textContent = ''; return; }
+      const [h, m] = time.split(':');
+      const d = days.length ? days.join(',') : '*';
+      document.getElementById('cron-preview').textContent = `${m} ${h} * * ${d}  (bell)`;
+    }
+
+    // ── Load & render bells ──
+
+    let bellsCache = [];
+
+    async function loadBells() {
+      const data = await apiFetch('/api/bells');
+      if (!data) return;
+      bellsCache = data;
+      renderBells(data);
+    }
+
+    function renderBells(bells) {
+      const tbody = document.getElementById('bells-tbody');
+      if (!bells.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="td-empty">No bells scheduled yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = bells.map(b => `
+        <tr>
+          <td>${esc(b.name)}</td>
+          <td>${esc(b.time)}</td>
+          <td>${esc(formatDays(b.days))}</td>
+          <td><span class="${b.enabled ? 'yes' : 'no'}">${b.enabled ? 'Yes' : 'No'}</span></td>
+          <td class="td-actions">
+            <button class="btn btn-sm"           data-action="edit"   data-id="${b.id}">Edit</button>
+            <button class="btn btn-sm btn-secondary" data-action="toggle" data-id="${b.id}">${b.enabled ? 'Disable' : 'Enable'}</button>
+            <button class="btn btn-sm btn-danger" data-action="delete" data-id="${b.id}" data-name="${esc(b.name)}">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Table event delegation ──
+
+    document.getElementById('bells-tbody').addEventListener('click', async e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const { action, id, name } = btn.dataset;
+      if (action === 'edit')   editBell(id);
+      if (action === 'toggle') toggleBell(id);
+      if (action === 'delete') deleteBell(id, name);
+    });
+
+    // ── CRUD ──
+
+    async function saveBell() {
+      const name    = document.getElementById('bell-name').value.trim();
+      const time    = document.getElementById('bell-time').value;
+      const enabled = document.getElementById('bell-enabled').value === 'true';
+      const days    = getSelectedDays();
+      const editId  = document.getElementById('editing-id').value;
+
+      if (!name || !time) { toast('Name and time are required', 'error'); return; }
+
+      const url    = editId ? `/api/bells/${editId}` : '/api/bells';
+      const method = editId ? 'PUT' : 'POST';
+      const data   = await apiFetch(url, method, { name, time, days, enabled });
+
+      if (data && data.id) {
+        toast(editId ? 'Bell updated' : 'Bell created', 'success');
+        cancelEdit();
+        loadBells();
+      } else if (data) {
+        toast(data.error || 'Failed to save', 'error');
+      }
+    }
+
+    function editBell(id) {
+      const bell = bellsCache.find(b => b.id === id);
+      if (!bell) return;
+      document.getElementById('editing-id').value    = id;
+      document.getElementById('bell-name').value     = bell.name;
+      document.getElementById('bell-time').value     = bell.time;
+      document.getElementById('bell-enabled').value  = bell.enabled ? 'true' : 'false';
+      setDays(bell.days || []);
+      document.getElementById('save-btn').textContent    = 'Update';
+      document.getElementById('cancel-btn').style.display = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      document.getElementById('editing-id').value    = '';
+      document.getElementById('bell-name').value     = '';
+      document.getElementById('bell-time').value     = '08:00';
+      document.getElementById('bell-enabled').value  = 'true';
+      setDays([1,2,3,4,5]);
+      document.getElementById('save-btn').textContent     = 'Save';
+      document.getElementById('cancel-btn').style.display = 'none';
+      updateCronPreview();
+    }
+
+    async function toggleBell(id) {
+      const data = await apiFetch(`/api/bells/${id}/toggle`, 'POST');
+      if (data) loadBells();
+    }
+
+    async function deleteBell(id, name) {
+      if (!confirm(`Delete bell "${name}"?`)) return;
+      const data = await apiFetch(`/api/bells/${id}`, 'DELETE');
+      if (data && data.ok) { toast('Bell deleted', 'success'); loadBells(); }
+    }
+
+    // ── Init ──
+
+    async function init() {
+      const cfg = await apiFetch('/api/config/public');
+      if (cfg) {
+        document.title = `${cfg.schoolName} — Bells`;
+        document.getElementById('page-title').textContent = `${cfg.schoolName} — Bells`;
+      }
+      loadBells();
+      updateCronPreview();
+    }
+
+    document.getElementById('bell-time').addEventListener('input', updateCronPreview);
+    document.querySelectorAll('input[name="day"]').forEach(cb => cb.addEventListener('change', updateCronPreview));
+
+    init();
+  </script>
+</body>
+</html>
