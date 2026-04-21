@@ -108,6 +108,9 @@
         document.title = `${cfg.schoolName} — Cameras`;
         document.getElementById('page-title').textContent = `${cfg.schoolName} — Cameras`;
       }
+      // Restore saved refresh interval before starting the timer
+      const saved = localStorage.getItem('cameraRefreshInterval');
+      if (saved) document.getElementById('refresh-interval').value = saved;
       document.getElementById('main-section').style.display = '';
       loadCameras();
       setRefreshInterval();
@@ -134,6 +137,8 @@
     }
 
     function renderCameras() {
+      // Render cards first with no src set — snapshots are loaded staggered below
+      // to avoid hitting the controller with all requests simultaneously (causes 429).
       document.getElementById('camera-grid').innerHTML = cameraList.map(cam => {
         const online = cam.state === 'CONNECTED';
         return `
@@ -147,11 +152,12 @@
             </div>
             <div class="camera-snapshot-wrap">
               ${online
-                ? `<img class="camera-snapshot" src="/api/cameras/${cam.id}/snapshot"
+                ? `<img class="camera-snapshot"
+                     data-src="/api/cameras/${cam.id}/snapshot"
                      alt="${esc(cam.name)}"
                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
                      onload="this.nextElementSibling.style.display='none'">
-                   <div class="camera-snapshot-placeholder" style="display:none">Snapshot unavailable</div>`
+                   <div class="camera-snapshot-placeholder" style="display:flex">Loading…</div>`
                 : `<div class="camera-snapshot-placeholder">Camera offline</div>`
               }
             </div>
@@ -162,11 +168,17 @@
           </div>
         `;
       }).join('');
+
+      // Stagger snapshot requests by 400 ms each so the controller isn't flooded
+      document.querySelectorAll('.camera-snapshot[data-src]').forEach((img, i) => {
+        setTimeout(() => { img.src = img.dataset.src; }, i * 400);
+      });
     }
 
     function setRefreshInterval() {
       clearInterval(refreshTimer);
       const secs = parseInt(document.getElementById('refresh-interval').value);
+      localStorage.setItem('cameraRefreshInterval', String(secs));
       if (secs > 0) {
         refreshTimer = setInterval(loadCameras, secs * 1000);
       }

@@ -409,16 +409,28 @@ app.get('/api/cameras/:id/snapshot', requireUserAuth, async (req, res) => {
 // ── Device status (user auth) ─────────────────────────────────────────────────
 
 app.get('/api/devices/status', requireUserAuth, async (req, res) => {
-  const [cameras, speakers, nvr] = await Promise.allSettled([
+  // Fetch cameras, chimes, and NVR in parallel — cameras is NOT re-fetched inside
+  // getAllSpeakers so we only make 3 total API calls instead of 4 (avoids 429 rate limits).
+  const [camerasRes, chimesRes, nvrRes] = await Promise.allSettled([
     unifiGet('/cameras').then(toArray),
-    getAllSpeakers(),
+    unifiGet('/chimes'),
     unifiGet('/nvr'),
   ]);
+
+  const cameras = camerasRes.status === 'fulfilled' ? camerasRes.value : [];
+  const rawChimes = chimesRes.status === 'fulfilled' ? toArray(chimesRes.value) : [];
+
+  // Build speakers list from already-fetched data (no extra round trips)
+  const speakers = [
+    ...rawChimes.map(d => normalizeSpeaker(d, 'chime')),
+    ...cameras.filter(d => d.featureFlags?.hasSpeaker).map(d => normalizeSpeaker(d, 'camera')),
+  ];
+
   res.json({
-    cameras: cameras.status  === 'fulfilled' ? cameras.value  : [],
-    chimes:  speakers.status === 'fulfilled' ? speakers.value : [],
-    nvr:     nvr.status      === 'fulfilled' ? nvr.value      : null,
-    errors:  [cameras, speakers, nvr]
+    cameras,
+    chimes:  speakers,
+    nvr:     nvrRes.status === 'fulfilled' ? nvrRes.value : null,
+    errors:  [camerasRes, chimesRes, nvrRes]
       .filter(r => r.status === 'rejected')
       .map(r => r.reason.message),
   });
