@@ -409,3 +409,144 @@ footer {
   font-size: 0.77rem;
   color: var(--text-muted);
 }
+
+/* ── Mobile ── */
+
+@media (max-width: 640px) {
+  body {
+    padding: 12px 14px;
+  }
+
+  h1 { font-size: 1.2rem; }
+
+  /* Nav — keep links visible and wrap if needed */
+  nav {
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  nav .nav-right {
+    margin-left: auto;
+  }
+
+  /* Alarm grid — 2 columns on phone */
+  .alarm-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .btn-alarm {
+    padding: 18px 8px;
+    font-size: 0.82rem;
+    min-height: 64px;
+  }
+
+  /* Toolbar — stack Check API and status, keep Logout right */
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar .status-text {
+    flex: 1 1 100%;
+    order: 3;
+    font-size: 0.8rem;
+  }
+
+  /* Cards */
+  .card {
+    padding: 16px;
+  }
+  .card.narrow {
+    margin: 24px auto;
+    max-width: 100%;
+  }
+
+  /* Form rows — stack all fields vertically */
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .form-group.flex-3,
+  .form-group.flex-1 {
+    flex: none;
+    min-width: 100%;
+  }
+
+  /* Inputs — bigger touch targets */
+  input[type="text"],
+  input[type="password"],
+  input[type="time"],
+  select {
+    padding: 10px 12px;
+    font-size: 0.95rem;
+  }
+
+  .btn {
+    padding: 11px 16px;
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    padding: 8px 12px;
+    min-height: 36px;
+  }
+
+  /* Day checkboxes — more breathing room */
+  .day-checkboxes {
+    gap: 12px 16px;
+  }
+
+  /* Table — horizontal scroll so nothing gets cut */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    min-width: 480px;
+  }
+  td, th {
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+  .td-actions {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Settings grid — single column */
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Suspend bar — stack vertically */
+  .suspend-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .suspend-bar .btn-secondary {
+    margin-left: 0 !important;
+    align-self: flex-end;
+  }
+
+  /* Modal — full width with safe spacing */
+  .modal {
+    width: 95%;
+    padding: 24px 18px;
+  }
+  .modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .modal-actions .btn {
+    width: 100%;
+  }
+
+  /* Toast — full width at bottom */
+  .toast {
+    left: 14px;
+    right: 14px;
+    bottom: 16px;
+    max-width: 100%;
+  }
+}
