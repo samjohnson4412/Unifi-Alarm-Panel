@@ -18,77 +18,173 @@
     <a href="/settings.html" class="nav-right">&#9881; Settings</a>
   </nav>
 
-  <main>
-    <!-- ── Add / Edit form ── -->
-    <div class="card">
-      <input type="hidden" id="editing-id">
-
-      <div class="form-row">
-        <div class="form-group flex-3">
-          <label for="bell-name">Bell Name</label>
-          <input type="text" id="bell-name" placeholder="1st Period Start">
-        </div>
-        <div class="form-group flex-1">
-          <label for="bell-time">Time</label>
-          <input type="time" id="bell-time" value="08:00">
-        </div>
-        <div class="form-group flex-1">
-          <label for="bell-enabled">Enabled</label>
-          <select id="bell-enabled">
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-        </div>
-      </div>
-
+  <!-- ── Login ── -->
+  <div id="login-section" style="display:none">
+    <div class="card narrow">
+      <h2>Staff Login</h2>
       <div class="form-group">
-        <label>Days of Week</label>
-        <div class="day-checkboxes">
-          <label><input type="checkbox" name="day" value="0"> Sun</label>
-          <label><input type="checkbox" name="day" value="1" checked> Mon</label>
-          <label><input type="checkbox" name="day" value="2" checked> Tue</label>
-          <label><input type="checkbox" name="day" value="3" checked> Wed</label>
-          <label><input type="checkbox" name="day" value="4" checked> Thu</label>
-          <label><input type="checkbox" name="day" value="5" checked> Fri</label>
-          <label><input type="checkbox" name="day" value="6"> Sat</label>
-        </div>
-        <div class="day-shortcuts">
-          <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5])">Mon&ndash;Fri</button>
-          <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5,6])">Mon&ndash;Sat</button>
-          <button class="btn btn-sm btn-secondary" onclick="setDays([0,1,2,3,4,5,6])">All Week</button>
-        </div>
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') login()">
       </div>
-
       <div class="form-actions">
-        <button class="btn" id="save-btn" onclick="saveBell()">Add</button>
-        <button class="btn btn-secondary" id="cancel-btn" style="display:none" onclick="cancelEdit()">Cancel</button>
+        <button class="btn" onclick="login()">Login</button>
+      </div>
+      <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
+    </div>
+  </div>
+
+  <!-- ── Main content ── -->
+  <div id="main-section" style="display:none">
+    <main>
+      <!-- Suspend toggle -->
+      <div class="suspend-bar" id="suspend-bar">
+        <div id="suspend-status" class="suspend-status"></div>
+        <button class="btn btn-sm" id="suspend-btn" onclick="toggleSuspend()">Loading…</button>
+        <button class="btn btn-secondary" style="margin-left:auto" onclick="logout()">Logout</button>
       </div>
 
-    </div>
+      <!-- ── Add / Edit form ── -->
+      <div class="card">
+        <input type="hidden" id="editing-id">
 
-    <!-- ── Bells table ── -->
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Time</th>
-            <th>Days</th>
-            <th>Enabled</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="bells-tbody">
-          <tr><td colspan="5" class="td-empty">No bells scheduled yet.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </main>
+        <div class="form-row">
+          <div class="form-group flex-3">
+            <label for="bell-name">Bell Name</label>
+            <input type="text" id="bell-name" placeholder="1st Period Start">
+          </div>
+          <div class="form-group flex-1">
+            <label for="bell-time">Time</label>
+            <input type="time" id="bell-time" value="08:00">
+          </div>
+          <div class="form-group flex-1">
+            <label for="bell-enabled">Enabled</label>
+            <select id="bell-enabled">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Days of Week</label>
+          <div class="day-checkboxes">
+            <label><input type="checkbox" name="day" value="0"> Sun</label>
+            <label><input type="checkbox" name="day" value="1" checked> Mon</label>
+            <label><input type="checkbox" name="day" value="2" checked> Tue</label>
+            <label><input type="checkbox" name="day" value="3" checked> Wed</label>
+            <label><input type="checkbox" name="day" value="4" checked> Thu</label>
+            <label><input type="checkbox" name="day" value="5" checked> Fri</label>
+            <label><input type="checkbox" name="day" value="6"> Sat</label>
+          </div>
+          <div class="day-shortcuts">
+            <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5])">Mon&ndash;Fri</button>
+            <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5,6])">Mon&ndash;Sat</button>
+            <button class="btn btn-sm btn-secondary" onclick="setDays([0,1,2,3,4,5,6])">All Week</button>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn" id="save-btn" onclick="saveBell()">Add</button>
+          <button class="btn btn-secondary" id="cancel-btn" style="display:none" onclick="cancelEdit()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- ── Bells table ── -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Time</th>
+              <th>Days</th>
+              <th>Enabled</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bells-tbody">
+            <tr><td colspan="5" class="td-empty">No bells scheduled yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
 
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <script>
     const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    // ── Auth ──
+
+    async function init() {
+      const status = await apiFetch('/api/auth/user-status');
+      if (status && status.authenticated) {
+        showMain();
+      } else {
+        document.getElementById('login-section').style.display = '';
+        setTimeout(() => document.getElementById('login-password').focus(), 50);
+      }
+    }
+
+    async function login() {
+      const password = document.getElementById('login-password').value;
+      const data     = await apiFetch('/api/auth/user-login', 'POST', { password });
+      if (data && data.ok) {
+        document.getElementById('login-error').style.display   = 'none';
+        document.getElementById('login-section').style.display = 'none';
+        showMain();
+      } else {
+        document.getElementById('login-error').style.display = '';
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-password').focus();
+      }
+    }
+
+    async function logout() {
+      await apiFetch('/api/auth/user-logout', 'POST');
+      document.getElementById('main-section').style.display   = 'none';
+      document.getElementById('login-password').value         = '';
+      document.getElementById('login-error').style.display    = 'none';
+      document.getElementById('login-section').style.display  = '';
+      document.getElementById('login-password').focus();
+    }
+
+    async function showMain() {
+      const cfg = await apiFetch('/api/config/public');
+      if (cfg) {
+        document.title = `${cfg.schoolName} — Bells`;
+        document.getElementById('page-title').textContent = `${cfg.schoolName} — Bells`;
+      }
+      document.getElementById('main-section').style.display = '';
+      loadBells();
+      loadSuspendStatus();
+    }
+
+    // ── Suspend toggle ──
+
+    async function loadSuspendStatus() {
+      const data = await apiFetch('/api/bells/suspend');
+      if (data) updateSuspendUI(data.suspended);
+    }
+
+    function updateSuspendUI(suspended) {
+      const bar    = document.getElementById('suspend-bar');
+      const status = document.getElementById('suspend-status');
+      const btn    = document.getElementById('suspend-btn');
+      bar.className = suspended ? 'suspend-bar suspended' : 'suspend-bar';
+      status.textContent = suspended ? '⚠ Bells are SUSPENDED — no bells will ring' : '✓ Bells are active';
+      btn.textContent    = suspended ? 'Resume Bells' : 'Suspend Bells for Today';
+      btn.className      = suspended ? 'btn btn-sm' : 'btn btn-sm btn-danger';
+    }
+
+    async function toggleSuspend() {
+      const data = await apiFetch('/api/bells/toggle-suspend', 'POST');
+      if (data) {
+        updateSuspendUI(data.suspended);
+        toast(data.suspended ? 'Bells suspended' : 'Bells resumed', data.suspended ? 'error' : 'success');
+      }
+    }
 
     // ── Utilities ──
 
@@ -162,15 +258,13 @@
           <td>${esc(formatDays(b.days))}</td>
           <td><span class="${b.enabled ? 'yes' : 'no'}">${b.enabled ? 'Yes' : 'No'}</span></td>
           <td class="td-actions">
-            <button class="btn btn-sm"           data-action="edit"   data-id="${b.id}">Edit</button>
+            <button class="btn btn-sm"              data-action="edit"   data-id="${b.id}">Edit</button>
             <button class="btn btn-sm btn-secondary" data-action="toggle" data-id="${b.id}">${b.enabled ? 'Disable' : 'Enable'}</button>
-            <button class="btn btn-sm btn-danger" data-action="delete" data-id="${b.id}" data-name="${esc(b.name)}">Delete</button>
+            <button class="btn btn-sm btn-danger"   data-action="delete" data-id="${b.id}" data-name="${esc(b.name)}">Delete</button>
           </td>
         </tr>
       `).join('');
     }
-
-    // ── Table event delegation ──
 
     document.getElementById('bells-tbody').addEventListener('click', async e => {
       const btn = e.target.closest('[data-action]');
@@ -208,21 +302,21 @@
     function editBell(id) {
       const bell = bellsCache.find(b => b.id === id);
       if (!bell) return;
-      document.getElementById('editing-id').value    = id;
-      document.getElementById('bell-name').value     = bell.name;
-      document.getElementById('bell-time').value     = bell.time;
-      document.getElementById('bell-enabled').value  = bell.enabled ? 'true' : 'false';
+      document.getElementById('editing-id').value     = id;
+      document.getElementById('bell-name').value      = bell.name;
+      document.getElementById('bell-time').value      = bell.time;
+      document.getElementById('bell-enabled').value   = bell.enabled ? 'true' : 'false';
       setDays(bell.days || []);
-      document.getElementById('save-btn').textContent    = 'Update';
+      document.getElementById('save-btn').textContent     = 'Update';
       document.getElementById('cancel-btn').style.display = '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function cancelEdit() {
-      document.getElementById('editing-id').value    = '';
-      document.getElementById('bell-name').value     = '';
-      document.getElementById('bell-time').value     = '08:00';
-      document.getElementById('bell-enabled').value  = 'true';
+      document.getElementById('editing-id').value         = '';
+      document.getElementById('bell-name').value          = '';
+      document.getElementById('bell-time').value          = '08:00';
+      document.getElementById('bell-enabled').value       = 'true';
       setDays([1,2,3,4,5]);
       document.getElementById('save-btn').textContent     = 'Add';
       document.getElementById('cancel-btn').style.display = 'none';
@@ -237,17 +331,6 @@
       if (!confirm(`Delete bell "${name}"?`)) return;
       const data = await apiFetch(`/api/bells/${id}`, 'DELETE');
       if (data && data.ok) { toast('Bell deleted', 'success'); loadBells(); }
-    }
-
-    // ── Init ──
-
-    async function init() {
-      const cfg = await apiFetch('/api/config/public');
-      if (cfg) {
-        document.title = `${cfg.schoolName} — Bells`;
-        document.getElementById('page-title').textContent = `${cfg.schoolName} — Bells`;
-      }
-      loadBells();
     }
 
     init();

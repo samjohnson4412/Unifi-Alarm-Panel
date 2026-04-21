@@ -32,12 +32,15 @@ const DEFAULT_ALARMS = [
 ];
 
 const DEFAULT_CONFIG = {
-  schoolName:  'Delphi Academy',
-  controllerIP: '',
-  apiKey:       '',
-  password:     'Admin1!!',
-  bellSoundId:  '',
-  alarms:       DEFAULT_ALARMS,
+  schoolName:    'Delphi Academy',
+  controllerIP:  '',
+  apiKey:        '',
+  password:      'Admin1!!',
+  userPassword:  'alarm',
+  bellSoundId:   '',
+  bellsSuspended: false,
+  sessionTimeout: 8,
+  alarms:        DEFAULT_ALARMS,
 };
 
 function loadConfig() {
@@ -96,6 +99,16 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Not authenticated' });
 }
 
+function requireUserAuth(req, res, next) {
+  const c       = loadConfig();
+  const timeout = (c.sessionTimeout || 8) * 3600000;
+  if (req.session.userAuthenticated &&
+      Date.now() - (req.session.userAuthTime || 0) < timeout) {
+    return next();
+  }
+  res.status(401).json({ error: 'Not authenticated' });
+}
+
 // ── UniFi integration ─────────────────────────────────────────────────────────
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
@@ -145,8 +158,12 @@ function scheduleBell(bell) {
   }
 
   activeCrons.set(bell.id, cron.schedule(expr, async () => {
+    const c = loadConfig();
+    if (c.bellsSuspended) {
+      console.log(`[${new Date().toISOString()}] Bell "${bell.name}" skipped — suspended`);
+      return;
+    }
     console.log(`[${new Date().toISOString()}] Bell: ${bell.name}`);
-    const c      = loadConfig();
     const soundId = bell.soundId || c.bellSoundId;
     try {
       await triggerUnifi(soundId);
@@ -167,9 +184,10 @@ function initSchedules() {
 app.get('/api/config/public', (req, res) => {
   const c = loadConfig();
   res.json({
-    schoolName: c.schoolName,
-    ready:  !!(c.controllerIP && c.apiKey),
-    alarms: c.alarms.map(a => ({ id: a.id, label: a.label, isDrill: a.isDrill, configured: !!a.soundId })),
+    schoolName:    c.schoolName,
+    ready:         !!(c.controllerIP && c.apiKey),
+    bellsSuspended: c.bellsSuspended || false,
+    alarms:        c.alarms.map(a => ({ id: a.id, label: a.label, isDrill: a.isDrill, configured: !!a.soundId })),
   });
 });
 
@@ -194,7 +212,7 @@ app.get('/api/check-unifi', async (req, res) => {
   }
 });
 
-app.post('/api/alarm/:alarmId', async (req, res) => {
+app.post('/api/alarm/:alarmId', requireUserAuth, async (req, res) => {
   const c     = loadConfig();
   const alarm = c.alarms.find(a => a.id === req.params.alarmId);
   if (!alarm) return res.status(404).json({ error: 'Unknown alarm' });
@@ -209,7 +227,18 @@ app.post('/api/alarm/:alarmId', async (req, res) => {
 // Bells CRUD
 app.get('/api/bells', (req, res) => res.json(loadBells()));
 
-app.post('/api/bells', (req, res) => {
+app.get('/api/bells/suspend', (req, res) => {
+  res.json({ suspended: loadConfig().bellsSuspended || false });
+});
+
+app.post('/api/bells/toggle-suspend', requireUserAuth, (req, res) => {
+  const c = loadConfig();
+  c.bellsSuspended = !c.bellsSuspended;
+  saveConfig(c);
+  res.json({ suspended: c.bellsSuspended });
+});
+
+app.post('/api/bells', requireUserAuth, (req, res) => {
   const { name, time, days, enabled } = req.body;
   if (!name?.trim() || !time) return res.status(400).json({ error: 'Name and time are required' });
   const bells = loadBells();
@@ -226,7 +255,7 @@ app.post('/api/bells', (req, res) => {
   res.json(bell);
 });
 
-app.put('/api/bells/:id', (req, res) => {
+app.put('/api/bells/:id', requireUserAuth, (req, res) => {
   const bells = loadBells();
   const idx   = bells.findIndex(b => b.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Bell not found' });
@@ -244,7 +273,7 @@ app.put('/api/bells/:id', (req, res) => {
   res.json(bell);
 });
 
-app.delete('/api/bells/:id', (req, res) => {
+app.delete('/api/bells/:id', requireUserAuth, (req, res) => {
   const bells = loadBells();
   const idx   = bells.findIndex(b => b.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Bell not found' });
@@ -257,7 +286,7 @@ app.delete('/api/bells/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/bells/:id/toggle', (req, res) => {
+app.post('/api/bells/:id/toggle', requireUserAuth, (req, res) => {
   const bells = loadBells();
   const idx   = bells.findIndex(b => b.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Bell not found' });
@@ -267,7 +296,33 @@ app.post('/api/bells/:id/toggle', (req, res) => {
   res.json(bells[idx]);
 });
 
-// Auth
+// Auth — user (alerts + bells pages)
+app.post('/api/auth/user-login', (req, res) => {
+  const { password } = req.body;
+  if (password === loadConfig().userPassword) {
+    req.session.userAuthenticated = true;
+    req.session.userAuthTime      = Date.now();
+    res.json({ ok: true });
+  } else {
+    res.status(401).json({ ok: false, error: 'Incorrect password' });
+  }
+});
+
+app.post('/api/auth/user-logout', (req, res) => {
+  req.session.userAuthenticated = false;
+  req.session.userAuthTime      = null;
+  res.json({ ok: true });
+});
+
+app.get('/api/auth/user-status', (req, res) => {
+  const c       = loadConfig();
+  const timeout = (c.sessionTimeout || 8) * 3600000;
+  const ok      = req.session.userAuthenticated &&
+                  Date.now() - (req.session.userAuthTime || 0) < timeout;
+  res.json({ authenticated: !!ok });
+});
+
+// Auth — admin (settings page)
 app.post('/api/auth/login', (req, res) => {
   const { password } = req.body;
   if (password === loadConfig().password) {
@@ -290,22 +345,25 @@ app.get('/api/auth/status', (req, res) => {
 app.get('/api/settings', requireAuth, (req, res) => {
   const c = loadConfig();
   res.json({
-    schoolName:   c.schoolName,
-    controllerIP: c.controllerIP,
-    apiKey:       c.apiKey,
-    bellSoundId:  c.bellSoundId || '',
-    alarms:       c.alarms,
+    schoolName:     c.schoolName,
+    controllerIP:   c.controllerIP,
+    apiKey:         c.apiKey,
+    bellSoundId:    c.bellSoundId   || '',
+    sessionTimeout: c.sessionTimeout || 8,
+    alarms:         c.alarms,
   });
 });
 
 app.put('/api/settings', requireAuth, (req, res) => {
   const c = loadConfig();
-  const { schoolName, controllerIP, apiKey, password, bellSoundId, alarms } = req.body;
-  if (schoolName   !== undefined) c.schoolName   = schoolName;
-  if (controllerIP !== undefined) c.controllerIP = controllerIP;
-  if (apiKey       !== undefined) c.apiKey       = apiKey;
-  if (password)                   c.password     = password;
-  if (bellSoundId  !== undefined) c.bellSoundId  = bellSoundId;
+  const { schoolName, controllerIP, apiKey, password, userPassword, bellSoundId, sessionTimeout, alarms } = req.body;
+  if (schoolName      !== undefined) c.schoolName      = schoolName;
+  if (controllerIP    !== undefined) c.controllerIP    = controllerIP;
+  if (apiKey          !== undefined) c.apiKey          = apiKey;
+  if (password)                      c.password        = password;
+  if (userPassword)                  c.userPassword    = userPassword;
+  if (bellSoundId     !== undefined) c.bellSoundId     = bellSoundId;
+  if (sessionTimeout  !== undefined) c.sessionTimeout  = Number(sessionTimeout);
   if (Array.isArray(alarms)) {
     alarms.forEach(u => {
       const a = c.alarms.find(x => x.id === u.id);

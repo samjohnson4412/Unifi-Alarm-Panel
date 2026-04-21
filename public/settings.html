@@ -46,6 +46,17 @@
             <label for="school-name">School Name</label>
             <input type="text" id="school-name" placeholder="Delphi Academy">
           </div>
+          <div class="form-group">
+            <label for="session-timeout">Session Timeout</label>
+            <select id="session-timeout">
+              <option value="1">1 hour</option>
+              <option value="4">4 hours</option>
+              <option value="8">8 hours</option>
+              <option value="24">24 hours</option>
+              <option value="168">7 days</option>
+            </select>
+            <span class="hint">How long before staff must log in again on the Alerts &amp; Bells pages.</span>
+          </div>
         </div>
 
         <!-- UniFi Controller -->
@@ -65,29 +76,44 @@
           </div>
         </div>
 
-        <!-- Bell Sound -->
+        <!-- Bell Trigger ID -->
         <div class="card">
           <h2>Bell Trigger ID</h2>
           <div class="form-group">
             <label for="bell-sound-id">Alarm-Manager Trigger ID</label>
             <input type="text" id="bell-sound-id" placeholder="e.g. abc123def456">
             <span class="hint">
-              Shared by all scheduled bells. Create a trigger in UniFi Protect under<br>
-              <em>Alarm Manager → Webhooks</em>, then paste its ID here.
+              Shared by all scheduled bells. Create a trigger in UniFi Protect under
+              <em>Alarm Manager &rarr; Webhooks</em>, then paste its ID here.
             </span>
           </div>
         </div>
 
-        <!-- Change Password -->
+        <!-- Admin Password -->
         <div class="card">
-          <h2>Change Password</h2>
+          <h2>Admin Password</h2>
+          <p class="hint" style="margin-bottom:12px">Used to access this Settings page.</p>
           <div class="form-group">
-            <label for="new-password">New Password</label>
-            <input type="password" id="new-password" placeholder="Leave blank to keep current" autocomplete="new-password">
+            <label for="new-admin-password">New Admin Password</label>
+            <input type="password" id="new-admin-password" placeholder="Leave blank to keep current" autocomplete="new-password">
           </div>
           <div class="form-group">
-            <label for="confirm-password">Confirm New Password</label>
-            <input type="password" id="confirm-password" autocomplete="new-password">
+            <label for="confirm-admin-password">Confirm New Password</label>
+            <input type="password" id="confirm-admin-password" autocomplete="new-password">
+          </div>
+        </div>
+
+        <!-- Staff Password -->
+        <div class="card">
+          <h2>Staff Password</h2>
+          <p class="hint" style="margin-bottom:12px">Used to access the Alerts &amp; Bells pages. Default: <code>alarm</code></p>
+          <div class="form-group">
+            <label for="new-user-password">New Staff Password</label>
+            <input type="password" id="new-user-password" placeholder="Leave blank to keep current" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="confirm-user-password">Confirm New Password</label>
+            <input type="password" id="confirm-user-password" autocomplete="new-password">
           </div>
         </div>
 
@@ -126,8 +152,6 @@
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <script>
-    // ── Utilities ──
-
     function toast(msg, type = '') {
       const el = document.getElementById('toast');
       el.textContent = msg;
@@ -156,7 +180,7 @@
         loadSettings();
       } else {
         document.getElementById('login-section').style.display = '';
-        document.getElementById('settings-section').style.display = 'none';
+        setTimeout(() => document.getElementById('login-password').focus(), 50);
       }
     }
 
@@ -166,7 +190,7 @@
       if (!res) return;
       const data = await res.json();
       if (data.ok) {
-        document.getElementById('login-error').style.display = 'none';
+        document.getElementById('login-error').style.display   = 'none';
         document.getElementById('login-section').style.display = 'none';
         loadSettings();
       } else {
@@ -179,9 +203,9 @@
     async function logout() {
       await apiFetch('/api/auth/logout', 'POST');
       document.getElementById('settings-section').style.display = 'none';
-      document.getElementById('login-password').value = '';
-      document.getElementById('login-error').style.display = 'none';
-      document.getElementById('login-section').style.display = '';
+      document.getElementById('login-password').value           = '';
+      document.getElementById('login-error').style.display      = 'none';
+      document.getElementById('login-section').style.display    = '';
       document.getElementById('login-password').focus();
     }
 
@@ -197,6 +221,7 @@
       document.getElementById('controller-ip').value  = cfg.controllerIP  || '';
       document.getElementById('api-key').value        = cfg.apiKey        || '';
       document.getElementById('bell-sound-id').value  = cfg.bellSoundId   || '';
+      document.getElementById('session-timeout').value = String(cfg.sessionTimeout || 8);
 
       const tbody = document.getElementById('alarm-config-tbody');
       tbody.innerHTML = (cfg.alarms || []).map(a => `
@@ -220,9 +245,13 @@
     }
 
     async function saveSettings() {
-      const newPw  = document.getElementById('new-password').value;
-      const confPw = document.getElementById('confirm-password').value;
-      if (newPw && newPw !== confPw) { toast('Passwords do not match', 'error'); return; }
+      const newAdminPw    = document.getElementById('new-admin-password').value;
+      const confAdminPw   = document.getElementById('confirm-admin-password').value;
+      const newUserPw     = document.getElementById('new-user-password').value;
+      const confUserPw    = document.getElementById('confirm-user-password').value;
+
+      if (newAdminPw && newAdminPw !== confAdminPw) { toast('Admin passwords do not match', 'error'); return; }
+      if (newUserPw  && newUserPw  !== confUserPw)  { toast('Staff passwords do not match',  'error'); return; }
 
       const alarms = [...document.querySelectorAll('.alarm-sound-input')].map(inp => ({
         id:      inp.dataset.alarmId,
@@ -230,20 +259,24 @@
       }));
 
       const body = {
-        schoolName:   document.getElementById('school-name').value.trim(),
-        controllerIP: document.getElementById('controller-ip').value.trim(),
-        apiKey:       document.getElementById('api-key').value.trim(),
-        bellSoundId:  document.getElementById('bell-sound-id').value.trim(),
+        schoolName:     document.getElementById('school-name').value.trim(),
+        controllerIP:   document.getElementById('controller-ip').value.trim(),
+        apiKey:         document.getElementById('api-key').value.trim(),
+        bellSoundId:    document.getElementById('bell-sound-id').value.trim(),
+        sessionTimeout: document.getElementById('session-timeout').value,
         alarms,
       };
-      if (newPw) body.password = newPw;
+      if (newAdminPw) body.password     = newAdminPw;
+      if (newUserPw)  body.userPassword = newUserPw;
 
       const res = await apiFetch('/api/settings', 'PUT', body);
       if (!res) return;
       if (res.ok) {
         toast('Settings saved successfully', 'success');
-        document.getElementById('new-password').value    = '';
-        document.getElementById('confirm-password').value = '';
+        document.getElementById('new-admin-password').value    = '';
+        document.getElementById('confirm-admin-password').value = '';
+        document.getElementById('new-user-password').value     = '';
+        document.getElementById('confirm-user-password').value = '';
       } else {
         toast('Failed to save settings', 'error');
       }

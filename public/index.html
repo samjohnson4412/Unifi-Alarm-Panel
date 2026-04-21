@@ -18,28 +18,104 @@
     <a href="/settings.html" class="nav-right">&#9881; Settings</a>
   </nav>
 
-  <main>
-    <div class="toolbar">
-      <button class="btn btn-secondary" id="check-btn" onclick="checkUnifi()">Check UniFi API</button>
-      <span id="check-status" class="status-text">Waiting&hellip;</span>
+  <!-- ── Login ── -->
+  <div id="login-section" style="display:none">
+    <div class="card narrow">
+      <h2>Staff Login</h2>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') login()">
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="login()">Login</button>
+      </div>
+      <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
     </div>
+  </div>
 
-    <div class="alarm-grid" id="alarm-grid">
-      <!-- populated by JS -->
+  <!-- ── Main content ── -->
+  <div id="main-section" style="display:none">
+    <main>
+      <div class="toolbar">
+        <button class="btn btn-secondary" id="check-btn" onclick="checkUnifi()">Check UniFi API</button>
+        <span id="check-status" class="status-text">Waiting&hellip;</span>
+        <button class="btn btn-secondary" style="margin-left:auto" onclick="logout()">Logout</button>
+      </div>
+
+      <div id="bells-suspended-banner" class="suspended-banner" style="display:none">
+        &#9888; Bells are currently suspended
+      </div>
+
+      <div class="alarm-grid" id="alarm-grid">
+        <!-- populated by JS -->
+      </div>
+    </main>
+
+    <footer>V3.3 &mdash; Sam Johnson</footer>
+  </div>
+
+  <!-- ── Confirm modal (real alarms only) ── -->
+  <div id="confirm-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-header">&#9888; WARNING</div>
+      <p style="color:var(--text-muted);margin-bottom:8px">You are about to trigger:</p>
+      <p id="modal-alarm-name" class="modal-alarm-name"></p>
+      <p style="margin-top:12px">This is <strong>NOT a drill.</strong><br>Are you sure?</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-danger" id="modal-confirm-btn">YES &mdash; TRIGGER NOW</button>
+      </div>
     </div>
-  </main>
-
-  <footer>V3.1 &mdash; Sam Johnson</footer>
+  </div>
 
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <script>
     async function init() {
+      const status = await apiFetch('/api/auth/user-status');
+      if (status && status.authenticated) {
+        showMain();
+      } else {
+        document.getElementById('login-section').style.display = '';
+        setTimeout(() => document.getElementById('login-password').focus(), 50);
+      }
+    }
+
+    async function login() {
+      const password = document.getElementById('login-password').value;
+      const data     = await apiFetch('/api/auth/user-login', 'POST', { password });
+      if (data && data.ok) {
+        document.getElementById('login-error').style.display  = 'none';
+        document.getElementById('login-section').style.display = 'none';
+        showMain();
+      } else {
+        document.getElementById('login-error').style.display = '';
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-password').focus();
+      }
+    }
+
+    async function logout() {
+      await apiFetch('/api/auth/user-logout', 'POST');
+      document.getElementById('main-section').style.display  = 'none';
+      document.getElementById('login-password').value        = '';
+      document.getElementById('login-error').style.display   = 'none';
+      document.getElementById('login-section').style.display = '';
+      document.getElementById('login-password').focus();
+    }
+
+    async function showMain() {
       const data = await apiFetch('/api/config/public');
       if (!data) return;
       document.title = `${data.schoolName} — Alerts`;
       document.getElementById('page-title').textContent = `${data.schoolName} — Alerts`;
+
+      const banner = document.getElementById('bells-suspended-banner');
+      banner.style.display = data.bellsSuspended ? '' : 'none';
+
       renderAlarms(data.alarms);
+      document.getElementById('main-section').style.display = '';
     }
 
     function renderAlarms(alarms) {
@@ -47,20 +123,49 @@
         <button
           class="btn btn-alarm${a.isDrill ? '' : ' real'}"
           data-id="${a.id}"
-          ${!a.configured ? 'title="Chime ID not configured — visit Settings"' : ''}
+          data-label="${esc(a.label)}"
+          data-drill="${a.isDrill}"
+          ${!a.configured ? 'title="Trigger ID not configured — visit Settings"' : ''}
         >${esc(a.label)}</button>
       `).join('');
 
       document.getElementById('alarm-grid').addEventListener('click', e => {
         const btn = e.target.closest('.btn-alarm');
-        if (btn) triggerAlarm(btn.dataset.id, btn);
+        if (!btn) return;
+        if (btn.dataset.drill === 'false') {
+          showConfirm(btn.dataset.id, btn.dataset.label);
+        } else {
+          triggerAlarm(btn.dataset.id, btn);
+        }
       });
     }
 
+    // ── Confirm modal ──
+
+    let pendingAlarmId = null;
+
+    function showConfirm(id, label) {
+      pendingAlarmId = id;
+      document.getElementById('modal-alarm-name').textContent = label;
+      document.getElementById('confirm-modal').style.display = '';
+      document.getElementById('modal-confirm-btn').onclick = () => {
+        closeModal();
+        const btn = document.querySelector(`[data-id="${id}"]`);
+        triggerAlarm(id, btn);
+      };
+    }
+
+    function closeModal() {
+      document.getElementById('confirm-modal').style.display = 'none';
+      pendingAlarmId = null;
+    }
+
+    // ── Alarm trigger ──
+
     async function triggerAlarm(id, btn) {
-      btn.disabled = true;
-      const orig = btn.textContent;
-      btn.textContent = 'Triggering…';
+      if (btn) { btn.disabled = true; }
+      const orig = btn ? btn.textContent : '';
+      if (btn) btn.textContent = 'Triggering…';
       try {
         const data = await apiFetch(`/api/alarm/${id}`, 'POST');
         if (data) {
@@ -68,8 +173,7 @@
           else toast(data.error || 'Failed', 'error');
         }
       } finally {
-        btn.disabled = false;
-        btn.textContent = orig;
+        if (btn) { btn.disabled = false; btn.textContent = orig; }
       }
     }
 
@@ -78,7 +182,7 @@
       const status = document.getElementById('check-status');
       btn.disabled = true;
       status.textContent = 'Checking…';
-      status.className = 'status-text';
+      status.className   = 'status-text';
       try {
         const data = await apiFetch('/api/check-unifi');
         if (data) {
@@ -92,6 +196,8 @@
         btn.disabled = false;
       }
     }
+
+    // ── Utilities ──
 
     async function apiFetch(url, method = 'GET', body) {
       try {
@@ -114,8 +220,12 @@
     }
 
     function esc(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeModal();
+    });
 
     init();
   </script>

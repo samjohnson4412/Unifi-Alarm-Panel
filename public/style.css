@@ -296,6 +296,89 @@ tbody tr:hover td { background: var(--surface-hover); }
 /* ── Error text ── */
 .error-text { color: var(--danger); font-size: 0.875rem; margin-top: 8px; }
 
+/* ── Confirm modal ── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--surface);
+  border: 2px solid var(--danger-border);
+  border-radius: 12px;
+  padding: 30px 28px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+
+.modal-header {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--danger);
+  margin-bottom: 16px;
+}
+
+.modal-alarm-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fca5a5;
+  margin: 6px 0 12px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+/* ── Suspend bar ── */
+
+.suspend-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.suspend-bar.suspended {
+  border-color: var(--danger-border);
+  background: #1a0f0f;
+}
+
+.suspend-status {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.suspend-bar.suspended .suspend-status { color: var(--danger); }
+.suspend-bar:not(.suspended) .suspend-status { color: var(--success); }
+
+/* ── Suspended banner (alerts page) ── */
+
+.suspended-banner {
+  background: #1a0f0f;
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
 /* ── Toast ── */
 
 .toast {
