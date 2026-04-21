@@ -197,6 +197,44 @@ async function unifiGet(path) {
   return r.json();
 }
 
+// Unwrap array responses (handles both [] and { data: [] } formats)
+function toArray(val) {
+  if (Array.isArray(val)) return val;
+  if (val && Array.isArray(val.data)) return val.data;
+  return [];
+}
+
+// Normalize a speaker device into a common shape for chime/horn listings
+function normalizeSpeaker(d, deviceType) {
+  const volume = deviceType === 'camera'
+    ? (d.speaker?.volume ?? d.speakerSettings?.volume ?? null)
+    : (d.volume ?? null);
+  return {
+    id:         d.id,
+    name:       d.name || d.id,
+    state:      d.state || (d.isConnected ? 'CONNECTED' : 'DISCONNECTED'),
+    volume,
+    type:       d.type || d.modelKey || '—',
+    deviceType,
+  };
+}
+
+// Fetch all speaker-capable devices: dedicated chimes + cameras with built-in speakers (AI Horns)
+async function getAllSpeakers() {
+  const [chimesRes, camerasRes] = await Promise.allSettled([
+    unifiGet('/chimes'),
+    unifiGet('/cameras'),
+  ]);
+  const speakers = [];
+  if (chimesRes.status === 'fulfilled')
+    toArray(chimesRes.value).forEach(d => speakers.push(normalizeSpeaker(d, 'chime')));
+  if (camerasRes.status === 'fulfilled')
+    toArray(camerasRes.value)
+      .filter(d => d.featureFlags?.hasSpeaker)
+      .forEach(d => speakers.push(normalizeSpeaker(d, 'camera')));
+  return speakers;
+}
+
 app.get('/api/config/public', (req, res) => {
   const c = loadConfig();
   res.json({
@@ -315,18 +353,26 @@ app.post('/api/bells/:id/toggle', requireUserAuth, (req, res) => {
 // ── Chimes (admin auth — settings page) ──────────────────────────────────────
 
 app.get('/api/chimes', requireAuth, async (req, res) => {
-  try { res.json(await unifiGet('/chimes')); }
+  try { res.json(await getAllSpeakers()); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/chimes/:id/volume', requireAuth, async (req, res) => {
   const c = loadConfig();
   if (!c.controllerIP || !c.apiKey) return res.status(503).json({ error: 'Controller not configured' });
+  const vol        = Number(req.body.volume);
+  const isCamera   = req.body.deviceType === 'camera';
+  const endpoint   = isCamera
+    ? `https://${c.controllerIP}/proxy/protect/integration/v1/cameras/${req.params.id}`
+    : `https://${c.controllerIP}/proxy/protect/integration/v1/chimes/${req.params.id}`;
+  const patchBody  = isCamera
+    ? JSON.stringify({ speaker: { volume: vol } })
+    : JSON.stringify({ volume: vol });
   try {
-    const r = await fetch(`https://${c.controllerIP}/proxy/protect/integration/v1/chimes/${req.params.id}`, {
+    const r = await fetch(endpoint, {
       method:  'PATCH',
       headers: { 'X-API-KEY': c.apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body:    JSON.stringify({ volume: Number(req.body.volume) }),
+      body:    patchBody,
       agent:   httpsAgent,
       timeout: 10000,
     });
@@ -341,7 +387,7 @@ app.patch('/api/chimes/:id/volume', requireAuth, async (req, res) => {
 // ── Cameras & snapshots (user auth) ──────────────────────────────────────────
 
 app.get('/api/cameras', requireUserAuth, async (req, res) => {
-  try { res.json(await unifiGet('/cameras')); }
+  try { res.json(toArray(await unifiGet('/cameras'))); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -350,7 +396,7 @@ app.get('/api/cameras/:id/snapshot', requireUserAuth, async (req, res) => {
   if (!c.controllerIP || !c.apiKey) return res.status(503).send('Controller not configured');
   try {
     const r = await fetch(
-      `https://${c.controllerIP}/proxy/protect/api/cameras/${req.params.id}/snapshot`,
+      `https://${c.controllerIP}/proxy/protect/integration/v1/cameras/${req.params.id}/snapshot`,
       { headers: { 'X-API-KEY': c.apiKey }, agent: httpsAgent, timeout: 15000 }
     );
     if (!r.ok) return res.status(r.status).send(`HTTP ${r.status}`);
@@ -363,16 +409,16 @@ app.get('/api/cameras/:id/snapshot', requireUserAuth, async (req, res) => {
 // ── Device status (user auth) ─────────────────────────────────────────────────
 
 app.get('/api/devices/status', requireUserAuth, async (req, res) => {
-  const [cameras, chimes, nvr] = await Promise.allSettled([
-    unifiGet('/cameras'),
-    unifiGet('/chimes'),
+  const [cameras, speakers, nvr] = await Promise.allSettled([
+    unifiGet('/cameras').then(toArray),
+    getAllSpeakers(),
     unifiGet('/nvr'),
   ]);
   res.json({
-    cameras: cameras.status === 'fulfilled' ? cameras.value : [],
-    chimes:  chimes.status  === 'fulfilled' ? chimes.value  : [],
-    nvr:     nvr.status     === 'fulfilled' ? nvr.value     : null,
-    errors:  [cameras, chimes, nvr]
+    cameras: cameras.status  === 'fulfilled' ? cameras.value  : [],
+    chimes:  speakers.status === 'fulfilled' ? speakers.value : [],
+    nvr:     nvr.status      === 'fulfilled' ? nvr.value      : null,
+    errors:  [cameras, speakers, nvr]
       .filter(r => r.status === 'rejected')
       .map(r => r.reason.message),
   });

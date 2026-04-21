@@ -315,18 +315,18 @@
             value="${c.volume ?? 50}" data-chime-id="${c.id}"
             oninput="this.nextElementSibling.textContent=this.value">
           <span class="volume-value">${c.volume ?? 50}</span>
-          <button class="btn btn-sm" onclick="setVolume('${c.id}', this)">Set</button>
+          <button class="btn btn-sm" onclick="setVolume('${c.id}', '${escHtml(c.deviceType || 'chime')}', this)">Set</button>
         </div>
       `).join('');
     }
 
-    async function setVolume(chimeId, btn) {
+    async function setVolume(chimeId, deviceType, btn) {
       const row    = btn.closest('.volume-row');
       const slider = row.querySelector('.volume-slider');
       const volume = parseInt(slider.value);
       btn.disabled = true;
       btn.textContent = '…';
-      const res = await apiFetch(`/api/chimes/${chimeId}/volume`, 'PATCH', { volume });
+      const res = await apiFetch(`/api/chimes/${chimeId}/volume`, 'PATCH', { volume, deviceType });
       btn.disabled = false;
       btn.textContent = 'Set';
       if (!res) return;
