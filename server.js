@@ -386,6 +386,36 @@ app.patch('/api/chimes/:id/volume', requireAuth, async (req, res) => {
 
 // ── Cameras & snapshots (user auth) ──────────────────────────────────────────
 
+// Temporary debug endpoint — visit /api/debug/devices while logged in to see
+// which UniFi API endpoint the horn/speaker devices appear under.
+app.get('/api/debug/devices', requireUserAuth, async (req, res) => {
+  const endpoints = ['/cameras', '/chimes', '/viewers', '/lights', '/sensors', '/doorbells', '/bridges', '/liveviews'];
+  const results = {};
+  await Promise.all(endpoints.map(async ep => {
+    try {
+      const data = await unifiGet(ep);
+      const arr  = toArray(data);
+      results[ep] = {
+        ok:    true,
+        count: arr.length,
+        items: arr.map(d => ({
+          id:           d.id,
+          name:         d.name,
+          type:         d.type,
+          modelKey:     d.modelKey,
+          state:        d.state,
+          featureFlags: d.featureFlags,
+          volume:       d.volume,
+          speaker:      d.speaker,
+        })),
+      };
+    } catch (e) {
+      results[ep] = { ok: false, error: e.message };
+    }
+  }));
+  res.json(results);
+});
+
 app.get('/api/cameras', requireUserAuth, async (req, res) => {
   try { res.json(toArray(await unifiGet('/cameras'))); }
   catch (err) { res.status(500).json({ error: err.message }); }
