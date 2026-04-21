@@ -137,42 +137,65 @@
     }
 
     function renderCameras() {
-      // Render cards first with no src set — snapshots are loaded staggered below
-      // to avoid hitting the controller with all requests simultaneously (causes 429).
-      document.getElementById('camera-grid').innerHTML = cameraList.map(cam => {
-        const online = cam.state === 'CONNECTED';
-        return `
-          <div class="camera-card">
-            <div class="camera-card-header">
-              <span style="font-weight:600;font-size:0.9rem">${esc(cam.name)}</span>
-              <span style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-muted)">
-                <span class="status-dot ${online ? 'online' : 'offline'}"></span>
-                ${online ? 'Online' : 'Offline'}
-              </span>
-            </div>
-            <div class="camera-snapshot-wrap">
-              ${online
-                ? `<img class="camera-snapshot"
-                     data-src="/api/cameras/${cam.id}/snapshot"
-                     alt="${esc(cam.name)}"
-                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
-                     onload="this.nextElementSibling.style.display='none'">
-                   <div class="camera-snapshot-placeholder" style="display:flex">Loading…</div>`
-                : `<div class="camera-snapshot-placeholder">Camera offline</div>`
-              }
-            </div>
-            <div class="camera-card-footer">
-              <span style="color:var(--text-muted)">${esc(cam.type || cam.modelKey || '')}</span>
-              ${cam.host ? `<span style="margin-left:auto;font-family:monospace">${esc(cam.host)}</span>` : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
+      const grid = document.getElementById('camera-grid');
 
-      // Stagger snapshot requests by 400 ms each so the controller isn't flooded
-      document.querySelectorAll('.camera-snapshot[data-src]').forEach((img, i) => {
-        setTimeout(() => { img.src = img.dataset.src; }, i * 400);
-      });
+      // Check whether the same set of camera cards is already rendered
+      const existingIds = [...grid.querySelectorAll('.camera-card[data-cam-id]')]
+        .map(el => el.dataset.camId);
+      const newIds = cameraList.map(c => c.id);
+      const isRefresh = existingIds.length === newIds.length &&
+        newIds.every((id, i) => id === existingIds[i]);
+
+      if (!isRefresh) {
+        // First load or camera list changed — build cards; snapshots load staggered
+        grid.innerHTML = cameraList.map(cam => {
+          const online = cam.state === 'CONNECTED';
+          return `
+            <div class="camera-card" data-cam-id="${cam.id}">
+              <div class="camera-card-header">
+                <span style="font-weight:600;font-size:0.9rem">${esc(cam.name)}</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-muted)">
+                  <span class="status-dot ${online ? 'online' : 'offline'}"></span>
+                  ${online ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <div class="camera-snapshot-wrap">
+                ${online
+                  ? `<img class="camera-snapshot" data-cam-id="${cam.id}"
+                       alt="${esc(cam.name)}"
+                       onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                       onload="this.nextElementSibling.style.display='none'">
+                     <div class="camera-snapshot-placeholder" style="display:flex">Loading…</div>`
+                  : `<div class="camera-snapshot-placeholder">Camera offline</div>`
+                }
+              </div>
+              <div class="camera-card-footer">
+                <span style="color:var(--text-muted)">${esc(cam.type || cam.modelKey || '')}</span>
+                ${cam.host ? `<span style="margin-left:auto;font-family:monospace">${esc(cam.host)}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Stagger initial loads to avoid rate-limiting the controller
+        grid.querySelectorAll('.camera-snapshot').forEach((img, i) => {
+          setTimeout(() => { img.src = `/api/cameras/${img.dataset.camId}/snapshot`; }, i * 400);
+        });
+
+      } else {
+        // Auto-refresh: preload each new snapshot silently, swap only when ready — no black flash
+        cameraList.forEach((cam, i) => {
+          if (cam.state !== 'CONNECTED') return;
+          const img = grid.querySelector(`.camera-snapshot[data-cam-id="${cam.id}"]`);
+          if (!img || !img.src) return; // still on initial staggered load, leave it alone
+          const newSrc = `/api/cameras/${cam.id}/snapshot?ts=${Date.now()}`;
+          setTimeout(() => {
+            const loader = new Image();
+            loader.onload = () => { img.src = newSrc; };
+            loader.src = newSrc;
+          }, i * 400);
+        });
+      }
     }
 
     function setRefreshInterval() {

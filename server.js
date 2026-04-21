@@ -430,8 +430,9 @@ app.get('/api/devices/status', requireUserAuth, async (req, res) => {
     cameras,
     chimes:  speakers,
     nvr:     nvrRes.status === 'fulfilled' ? nvrRes.value : null,
+    // 404 means the endpoint doesn't exist on this firmware — not a real error worth showing
     errors:  [camerasRes, chimesRes, nvrRes]
-      .filter(r => r.status === 'rejected')
+      .filter(r => r.status === 'rejected' && !r.reason?.message?.includes('HTTP 404'))
       .map(r => r.reason.message),
   });
 });
