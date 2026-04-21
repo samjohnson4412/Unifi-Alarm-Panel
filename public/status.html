@@ -57,12 +57,6 @@
         <h2>Cameras <span id="camera-count" class="device-count"></span></h2>
         <div id="cameras-status"><p class="hint">Loading…</p></div>
       </div>
-
-      <!-- Chimes / Horns -->
-      <div class="card status-section">
-        <h2>Chimes &amp; Horns <span id="chime-count" class="device-count"></span></h2>
-        <div id="chimes-status"><p class="hint">Loading…</p></div>
-      </div>
     </main>
   </div>
 
@@ -133,7 +127,6 @@
 
       renderNvr(data.nvr);
       renderCameras(data.cameras || []);
-      renderChimes(data.chimes || []);
     }
 
     function renderNvr(nvr) {
@@ -175,39 +168,6 @@
                   <td>${esc(c.name)}</td>
                   <td style="color:var(--text-muted);font-size:0.82rem">${esc(c.type || c.modelKey || '—')}</td>
                   <td style="font-family:monospace;font-size:0.82rem">${esc(c.host || '—')}</td>
-                  <td>
-                    <span style="display:flex;align-items:center;gap:6px">
-                      <span class="status-dot ${online ? 'online' : 'offline'}"></span>
-                      <span class="${online ? 'yes' : 'no'}">${online ? 'Online' : 'Offline'}</span>
-                    </span>
-                  </td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>`;
-    }
-
-    function renderChimes(chimes) {
-      document.getElementById('chime-count').textContent =
-        `(${chimes.filter(c => c.state === 'CONNECTED').length}/${chimes.length} online)`;
-
-      const el = document.getElementById('chimes-status');
-      if (!chimes.length) { el.innerHTML = '<p class="hint">No chimes or horns found.</p>'; return; }
-
-      el.innerHTML = `
-        <div class="table-wrap" style="margin-bottom:0">
-          <table>
-            <thead>
-              <tr><th>Name</th><th>Model</th><th>Volume</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              ${chimes.map(c => {
-                const online = c.state === 'CONNECTED';
-                return `<tr>
-                  <td>${esc(c.name)}</td>
-                  <td style="color:var(--text-muted);font-size:0.82rem">${esc(c.type || c.modelKey || '—')}</td>
-                  <td>${c.volume != null ? c.volume + '%' : '—'}</td>
                   <td>
                     <span style="display:flex;align-items:center;gap:6px">
                       <span class="status-dot ${online ? 'online' : 'offline'}"></span>

@@ -121,14 +121,6 @@
 
       </div>
 
-      <!-- Horn / Chime Volume -->
-      <div class="card">
-        <h2>Horn / Chime Volume</h2>
-        <p class="hint" style="margin-bottom:12px">Set the playback volume (0–100) for each chime or horn connected to your controller.</p>
-        <button class="btn btn-secondary btn-sm" onclick="loadChimes()">&#8635; Load from Controller</button>
-        <div id="chime-volume-list" style="margin-top:14px"></div>
-      </div>
-
       <!-- Alarm Trigger IDs -->
       <div class="card">
         <h2>Alarm Trigger IDs</h2>
@@ -289,51 +281,6 @@
         document.getElementById('confirm-user-password').value = '';
       } else {
         toast('Failed to save settings', 'error');
-      }
-    }
-
-    // ── Chime volume ──
-
-    async function loadChimes() {
-      const list = document.getElementById('chime-volume-list');
-      list.innerHTML = '<p class="hint">Loading…</p>';
-      const res = await apiFetch('/api/chimes');
-      if (!res) return;
-      const chimes = await res.json().catch(() => null);
-      if (!chimes || chimes.error) {
-        list.innerHTML = `<p class="error-text">${escHtml(chimes?.error || 'Failed to load chimes')}</p>`;
-        return;
-      }
-      if (!chimes.length) {
-        list.innerHTML = '<p class="hint">No chimes found on controller.</p>';
-        return;
-      }
-      list.innerHTML = chimes.map(c => `
-        <div class="volume-row">
-          <div class="volume-device-name">${escHtml(c.name || c.id)}</div>
-          <input type="range" class="volume-slider" min="0" max="100" step="1"
-            value="${c.volume ?? 50}" data-chime-id="${c.id}"
-            oninput="this.nextElementSibling.textContent=this.value">
-          <span class="volume-value">${c.volume ?? 50}</span>
-          <button class="btn btn-sm" onclick="setVolume('${c.id}', '${escHtml(c.deviceType || 'chime')}', this)">Set</button>
-        </div>
-      `).join('');
-    }
-
-    async function setVolume(chimeId, deviceType, btn) {
-      const row    = btn.closest('.volume-row');
-      const slider = row.querySelector('.volume-slider');
-      const volume = parseInt(slider.value);
-      btn.disabled = true;
-      btn.textContent = '…';
-      const res = await apiFetch(`/api/chimes/${chimeId}/volume`, 'PATCH', { volume, deviceType });
-      btn.disabled = false;
-      btn.textContent = 'Set';
-      if (!res) return;
-      if (res.ok) toast(`Volume set to ${volume}`, 'success');
-      else {
-        const d = await res.json().catch(() => ({}));
-        toast(d.error || 'Failed to set volume', 'error');
       }
     }
 
