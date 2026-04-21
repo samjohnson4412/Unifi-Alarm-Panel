@@ -388,10 +388,7 @@ app.patch('/api/chimes/:id/volume', requireAuth, async (req, res) => {
 
 // Temporary debug endpoint — visit /api/debug/devices while logged in to see
 // which UniFi API endpoint the horn/speaker devices appear under.
-app.get('/api/debug/devices', (req, res, next) => {
-  if (req.session.authenticated || req.session.userAuthenticated) return next();
-  res.status(401).json({ error: 'Not authenticated — log into Settings or Alerts first, then revisit this URL' });
-}, async (req, res) => {
+app.get('/api/debug/devices', requireUserAuth, async (req, res) => {
   const endpoints = ['/cameras', '/chimes', '/viewers', '/lights', '/sensors', '/doorbells', '/bridges', '/liveviews'];
   const results = {};
   await Promise.all(endpoints.map(async ep => {
