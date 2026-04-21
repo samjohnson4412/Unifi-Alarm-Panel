@@ -19,7 +19,7 @@
 
   <main>
     <!-- ── Login ── -->
-    <div id="login-section">
+    <div id="login-section" style="display:none">
       <div class="card narrow">
         <h2>Admin Login</h2>
         <div class="form-group">
@@ -67,13 +67,13 @@
 
         <!-- Bell Sound -->
         <div class="card">
-          <h2>Bell Chime ID</h2>
+          <h2>Bell Trigger ID</h2>
           <div class="form-group">
-            <label for="bell-sound-id">Default Chime Device ID</label>
-            <input type="text" id="bell-sound-id" placeholder="e.g. 5f3d2a1b0c9e8f7a">
+            <label for="bell-sound-id">Alarm-Manager Trigger ID</label>
+            <input type="text" id="bell-sound-id" placeholder="e.g. abc123def456">
             <span class="hint">
-              Shared by all scheduled bells. Find IDs with:<br>
-              <code style="font-size:0.75rem">GET /proxy/protect/integration/v1/chimes</code>
+              Shared by all scheduled bells. Create a trigger in UniFi Protect under<br>
+              <em>Alarm Manager → Webhooks</em>, then paste its ID here.
             </span>
           </div>
         </div>
@@ -93,11 +93,11 @@
 
       </div>
 
-      <!-- Alarm Chime IDs -->
+      <!-- Alarm Trigger IDs -->
       <div class="card">
-        <h2>Alarm Chime IDs</h2>
+        <h2>Alarm Trigger IDs</h2>
         <p class="hint" style="margin-bottom:14px">
-          Enter the UniFi chime device ID to trigger for each alarm type.
+          Enter the Alarm Manager webhook Trigger ID for each alarm type.
           Leave blank if that alarm is not yet in use.
         </p>
         <div class="table-wrap" style="margin-bottom:0">
@@ -105,7 +105,7 @@
             <thead>
               <tr>
                 <th>Alarm</th>
-                <th>Chime Device ID</th>
+                <th>Trigger ID</th>
               </tr>
             </thead>
             <tbody id="alarm-config-tbody">
@@ -191,6 +191,7 @@
       const res = await apiFetch('/api/settings');
       if (!res || res.status === 401) { checkAuth(); return; }
       const cfg = await res.json();
+      document.getElementById('login-section').style.display = 'none';
 
       document.getElementById('school-name').value    = cfg.schoolName    || '';
       document.getElementById('controller-ip').value  = cfg.controllerIP  || '';
@@ -203,7 +204,7 @@
           <td>${escHtml(a.label)}</td>
           <td>
             <input type="text" class="alarm-sound-input" data-alarm-id="${a.id}"
-              value="${escHtml(a.soundId || '')}" placeholder="chime-device-id">
+              value="${escHtml(a.soundId || '')}" placeholder="trigger-id">
           </td>
         </tr>
       `).join('');

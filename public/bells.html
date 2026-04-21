@@ -60,11 +60,10 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn" id="save-btn" onclick="saveBell()">Save</button>
+        <button class="btn" id="save-btn" onclick="saveBell()">Add</button>
         <button class="btn btn-secondary" id="cancel-btn" style="display:none" onclick="cancelEdit()">Cancel</button>
       </div>
 
-      <div class="cron-preview" id="cron-preview"></div>
     </div>
 
     <!-- ── Bells table ── -->
@@ -123,7 +122,6 @@
       document.querySelectorAll('input[name="day"]').forEach(cb => {
         cb.checked = selected.includes(parseInt(cb.value));
       });
-      updateCronPreview();
     }
 
     function getSelectedDays() {
@@ -138,15 +136,6 @@
       if (JSON.stringify(s) === JSON.stringify([1,2,3,4,5]))     return 'Mon–Fri';
       if (JSON.stringify(s) === JSON.stringify([1,2,3,4,5,6]))   return 'Mon–Sat';
       return s.map(d => DAY_NAMES[d]).join(', ');
-    }
-
-    function updateCronPreview() {
-      const time = document.getElementById('bell-time').value;
-      const days = getSelectedDays();
-      if (!time) { document.getElementById('cron-preview').textContent = ''; return; }
-      const [h, m] = time.split(':');
-      const d = days.length ? days.join(',') : '*';
-      document.getElementById('cron-preview').textContent = `${m} ${h} * * ${d}  (bell)`;
     }
 
     // ── Load & render bells ──
@@ -235,9 +224,8 @@
       document.getElementById('bell-time').value     = '08:00';
       document.getElementById('bell-enabled').value  = 'true';
       setDays([1,2,3,4,5]);
-      document.getElementById('save-btn').textContent     = 'Save';
+      document.getElementById('save-btn').textContent     = 'Add';
       document.getElementById('cancel-btn').style.display = 'none';
-      updateCronPreview();
     }
 
     async function toggleBell(id) {
@@ -260,11 +248,7 @@
         document.getElementById('page-title').textContent = `${cfg.schoolName} — Bells`;
       }
       loadBells();
-      updateCronPreview();
     }
-
-    document.getElementById('bell-time').addEventListener('input', updateCronPreview);
-    document.querySelectorAll('input[name="day"]').forEach(cb => cb.addEventListener('change', updateCronPreview));
 
     init();
   </script>

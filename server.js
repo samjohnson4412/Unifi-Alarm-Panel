@@ -104,10 +104,10 @@ async function triggerUnifi(soundId) {
   const c = loadConfig();
   if (!c.controllerIP) throw new Error('Controller IP not configured — visit Settings.');
   if (!c.apiKey)       throw new Error('API Key not configured — visit Settings.');
-  if (!soundId)        throw new Error('Chime ID not configured for this alarm — visit Settings.');
+  if (!soundId)        throw new Error('Trigger ID not configured for this alarm — visit Settings.');
 
-  // UniFi Protect Integration API: POST /proxy/protect/integration/v1/chimes/{id}/play-speaker
-  const url = `https://${c.controllerIP}/proxy/protect/integration/v1/chimes/${encodeURIComponent(soundId)}/play-speaker`;
+  // UniFi Protect Integration API: POST /proxy/protect/integration/v1/alarm-manager/webhook/{triggerID}
+  const url = `https://${c.controllerIP}/proxy/protect/integration/v1/alarm-manager/webhook/${encodeURIComponent(soundId)}`;
 
   const res = await fetch(url, {
     method:  'POST',
