@@ -65,8 +65,21 @@
       <p id="modal-alarm-name" class="modal-alarm-name"></p>
       <p style="margin-top:12px">This is <strong>NOT a drill.</strong><br>Are you sure?</p>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-danger" id="modal-confirm-btn">YES &mdash; TRIGGER NOW</button>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <label style="color:var(--text-muted);font-size:0.88rem;white-space:nowrap">Play count:</label>
+          <select id="modal-repeat-count" style="width:auto">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="3">3×</option>
+            <option value="4">4×</option>
+            <option value="5">5×</option>
+            <option value="6" selected>6×</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-danger" id="modal-confirm-btn">YES &mdash; TRIGGER NOW</button>
+        </div>
       </div>
     </div>
   </div>
@@ -149,11 +162,13 @@
     function showConfirm(id, label) {
       pendingAlarmId = id;
       document.getElementById('modal-alarm-name').textContent = label;
+      document.getElementById('modal-repeat-count').value = '6';
       document.getElementById('confirm-modal').style.display = '';
       document.getElementById('modal-confirm-btn').onclick = () => {
+        const count = parseInt(document.getElementById('modal-repeat-count').value) || 1;
         closeModal();
         const btn = document.querySelector(`[data-id="${id}"]`);
-        triggerAlarm(id, btn);
+        triggerAlarm(id, btn, count);
       };
     }
 
@@ -164,19 +179,21 @@
 
     // ── Alarm trigger ──
 
-    async function triggerAlarm(id, btn) {
-      if (btn) { btn.disabled = true; }
+    async function triggerAlarm(id, btn, count = 1) {
+      if (btn) btn.disabled = true;
       const orig = btn ? btn.textContent : '';
-      if (btn) btn.textContent = 'Triggering…';
-      try {
-        const data = await apiFetch(`/api/alarm/${id}`, 'POST');
-        if (data) {
-          if (data.ok) toast(data.message, 'success');
-          else toast(data.error || 'Failed', 'error');
-        }
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = orig; }
+      for (let i = 0; i < count; i++) {
+        if (btn) btn.textContent = count > 1 ? `Triggering… (${i + 1}/${count})` : 'Triggering…';
+        try {
+          const data = await apiFetch(`/api/alarm/${id}`, 'POST');
+          if (data) {
+            if (data.ok) toast(count > 1 ? `${data.message} (${i + 1}/${count})` : data.message, 'success');
+            else { toast(data.error || 'Failed', 'error'); break; }
+          }
+        } catch { break; }
+        if (i < count - 1) await new Promise(r => setTimeout(r, 1500));
       }
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
     }
 
     async function checkUnifi() {
