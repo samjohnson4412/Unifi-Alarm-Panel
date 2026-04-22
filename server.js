@@ -18,17 +18,17 @@ const BELLS_FILE = path.join(DATA_DIR, 'bells.json');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DEFAULT_ALARMS = [
-  { id: 'fire_drill',            label: 'Fire Drill',                          soundId: '', isDrill: true  },
-  { id: 'fire_real',             label: 'Fire (NOT A DRILL)',                   soundId: '', isDrill: false },
-  { id: 'severe_weather_drill',  label: 'Severe Weather Warning Drill',         soundId: '', isDrill: true  },
-  { id: 'severe_weather_real',   label: 'Severe Weather Warning (NOT A DRILL)', soundId: '', isDrill: false },
-  { id: 'intruder_drill',        label: 'Intruder Lockdown Drill',              soundId: '', isDrill: true  },
-  { id: 'intruder_real',         label: 'Intruder Lockdown (NOT A DRILL)',      soundId: '', isDrill: false },
-  { id: 'tornado_drill',         label: 'Tornado Warning Drill',                soundId: '', isDrill: true  },
-  { id: 'tornado_real',          label: 'Tornado Warning (NOT A DRILL)',        soundId: '', isDrill: false },
-  { id: 'system_test',           label: 'System Test',                          soundId: '', isDrill: true  },
-  { id: 'graduation',            label: 'Graduation Song',                      soundId: '', isDrill: true  },
-  { id: 'all_clear',             label: 'All Clear',                            soundId: '', isDrill: true  },
+  { id: 'fire_drill',            label: 'Fire Drill',                          soundId: '', isDrill: true,  repeatCount: 1, repeatDelay: 15 },
+  { id: 'fire_real',             label: 'Fire (NOT A DRILL)',                   soundId: '', isDrill: false, repeatCount: 1, repeatDelay: 15 },
+  { id: 'severe_weather_drill',  label: 'Severe Weather Warning Drill',         soundId: '', isDrill: true,  repeatCount: 1, repeatDelay: 15 },
+  { id: 'severe_weather_real',   label: 'Severe Weather Warning (NOT A DRILL)', soundId: '', isDrill: false, repeatCount: 1, repeatDelay: 15 },
+  { id: 'intruder_drill',        label: 'Intruder Lockdown Drill',              soundId: '', isDrill: true,  repeatCount: 1, repeatDelay: 15 },
+  { id: 'intruder_real',         label: 'Intruder Lockdown (NOT A DRILL)',      soundId: '', isDrill: false, repeatCount: 1, repeatDelay: 15 },
+  { id: 'tornado_drill',         label: 'Tornado Warning Drill',                soundId: '', isDrill: true,  repeatCount: 1, repeatDelay: 15 },
+  { id: 'tornado_real',          label: 'Tornado Warning (NOT A DRILL)',        soundId: '', isDrill: false, repeatCount: 1, repeatDelay: 15 },
+  { id: 'system_test',           label: 'System Test',                          soundId: '', isDrill: true,  repeatCount: 1, repeatDelay: 15 },
+  { id: 'graduation',            label: 'Graduation Song',                      soundId: '', isDrill: true,  repeatCount: 1, repeatDelay: 15 },
+  { id: 'all_clear',             label: 'All Clear',                            soundId: '', isDrill: true,  repeatCount: 1, repeatDelay: 15 },
 ];
 
 const DEFAULT_CONFIG = {
@@ -53,7 +53,12 @@ function loadConfig() {
     const savedAlarms = saved.alarms || [];
     saved.alarms = DEFAULT_ALARMS.map(def => {
       const found = savedAlarms.find(a => a.id === def.id);
-      return found ? { ...def, soundId: found.soundId } : { ...def };
+      return found ? {
+        ...def,
+        soundId:     found.soundId,
+        repeatCount: found.repeatCount ?? def.repeatCount,
+        repeatDelay: found.repeatDelay ?? def.repeatDelay,
+      } : { ...def };
     });
     return { ...DEFAULT_CONFIG, ...saved };
   } catch (e) {
@@ -210,7 +215,7 @@ app.get('/api/config/public', (req, res) => {
     schoolName:    c.schoolName,
     ready:         !!(c.controllerIP && c.apiKey),
     bellsSuspended: c.bellsSuspended || false,
-    alarms:        c.alarms.map(a => ({ id: a.id, label: a.label, isDrill: a.isDrill, configured: !!a.soundId })),
+    alarms:        c.alarms.map(a => ({ id: a.id, label: a.label, isDrill: a.isDrill, configured: !!a.soundId, repeatCount: a.repeatCount || 1, repeatDelay: a.repeatDelay || 15 })),
   });
 });
 
@@ -428,7 +433,10 @@ app.put('/api/settings', requireAuth, (req, res) => {
   if (Array.isArray(alarms)) {
     alarms.forEach(u => {
       const a = c.alarms.find(x => x.id === u.id);
-      if (a && u.soundId !== undefined) a.soundId = u.soundId;
+      if (!a) return;
+      if (u.soundId     !== undefined) a.soundId     = u.soundId;
+      if (u.repeatCount !== undefined) a.repeatCount = Math.max(1, parseInt(u.repeatCount) || 1);
+      if (u.repeatDelay !== undefined) a.repeatDelay = Math.max(1, parseInt(u.repeatDelay) || 15);
     });
   }
   saveConfig(c);

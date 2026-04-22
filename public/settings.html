@@ -134,6 +134,8 @@
               <tr>
                 <th>Alarm</th>
                 <th>Trigger ID</th>
+                <th style="white-space:nowrap">Play Count</th>
+                <th style="white-space:nowrap">Delay (s)</th>
               </tr>
             </thead>
             <tbody id="alarm-config-tbody">
@@ -233,6 +235,14 @@
             <input type="text" class="alarm-sound-input" data-alarm-id="${a.id}"
               value="${escHtml(a.soundId || '')}" placeholder="trigger-id">
           </td>
+          <td>
+            <input type="number" class="alarm-repeat-input" data-alarm-id="${a.id}"
+              value="${a.repeatCount || 1}" min="1" max="99" style="width:60px;text-align:center">
+          </td>
+          <td>
+            <input type="number" class="alarm-delay-input" data-alarm-id="${a.id}"
+              value="${a.repeatDelay || 15}" min="1" max="600" style="width:70px;text-align:center">
+          </td>
         </tr>
       `).join('');
 
@@ -255,10 +265,15 @@
       if (newAdminPw && newAdminPw !== confAdminPw) { toast('Admin passwords do not match', 'error'); return; }
       if (newUserPw  && newUserPw  !== confUserPw)  { toast('Staff passwords do not match',  'error'); return; }
 
-      const alarms = [...document.querySelectorAll('.alarm-sound-input')].map(inp => ({
-        id:      inp.dataset.alarmId,
-        soundId: inp.value.trim(),
-      }));
+      const alarms = [...document.querySelectorAll('.alarm-sound-input')].map(inp => {
+        const id = inp.dataset.alarmId;
+        return {
+          id,
+          soundId:     inp.value.trim(),
+          repeatCount: parseInt(document.querySelector(`.alarm-repeat-input[data-alarm-id="${id}"]`)?.value) || 1,
+          repeatDelay: parseInt(document.querySelector(`.alarm-delay-input[data-alarm-id="${id}"]`)?.value)  || 15,
+        };
+      });
 
       const body = {
         schoolName:     document.getElementById('school-name').value.trim(),
