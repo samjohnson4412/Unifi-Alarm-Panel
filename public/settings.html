@@ -4,154 +4,168 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alarm Panel — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Settings</h1>
-  </header>
 
-  <nav>
-    <a href="/">Alerts</a>
-    <a href="/bells.html">Bells</a>
-    <a href="/cameras.html">Cameras</a>
-    <a href="/status.html">Status</a>
-    <a href="/settings.html" class="active nav-right">&#9881; Settings</a>
-  </nav>
-
-  <main>
-    <!-- ── Login ── -->
-    <div id="login-section" style="display:none">
-      <div class="card narrow">
-        <h2>Admin Login</h2>
-        <div class="form-group">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" autocomplete="current-password"
-            onkeydown="if(event.key==='Enter') login()">
+  <div class="app-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
         </div>
-        <div class="form-actions">
-          <button class="btn" onclick="login()">Login</button>
-        </div>
-        <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
+        <span class="header-title">Settings</span>
       </div>
     </div>
+    <nav>
+      <a href="/">Alerts</a>
+      <a href="/bells.html">Bells</a>
+      <a href="/cameras.html">Cameras</a>
+      <a href="/status.html">Status</a>
+      <a href="/settings.html" class="active nav-right">&#9881; Settings</a>
+    </nav>
+  </div>
 
-    <!-- ── Settings ── -->
-    <div id="settings-section" style="display:none">
+  <div class="page-content">
+    <main>
 
-      <div class="settings-grid">
-
-        <!-- General -->
-        <div class="card">
-          <h2>General</h2>
+      <!-- ── Login ── -->
+      <div id="login-section" style="display:none">
+        <div class="card narrow">
+          <h2>Admin Login</h2>
           <div class="form-group">
-            <label for="school-name">Site Name</label>
-            <input type="text" id="school-name" placeholder="e.g. Delphi Academy">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" autocomplete="current-password"
+              onkeydown="if(event.key==='Enter') login()">
           </div>
-          <div class="form-group">
-            <label for="session-timeout">Session Timeout</label>
-            <select id="session-timeout">
-              <option value="1">1 hour</option>
-              <option value="4">4 hours</option>
-              <option value="8">8 hours</option>
-              <option value="24">24 hours</option>
-              <option value="168">7 days</option>
-            </select>
-            <span class="hint">How long before staff must log in again on the Alerts &amp; Bells pages.</span>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="login()">Login</button>
           </div>
+          <p id="login-error" class="error-text" style="display:none">Incorrect password &mdash; try again.</p>
         </div>
+      </div>
 
-        <!-- UniFi Controller -->
-        <div class="card">
-          <h2>UniFi Controller</h2>
-          <div class="form-group">
-            <label for="controller-ip">Controller IP / Hostname</label>
-            <input type="text" id="controller-ip" placeholder="192.168.1.1">
-            <span class="hint">Used in: https://&lt;IP&gt;/proxy/protect/integration/v1/…</span>
-          </div>
-          <div class="form-group">
-            <label for="api-key">API Key</label>
-            <div class="input-row">
-              <input type="password" id="api-key" placeholder="Paste API key here" autocomplete="off">
-              <button class="btn btn-sm btn-secondary" id="toggle-key-btn" onclick="toggleApiKey()">Show</button>
+      <!-- ── Settings ── -->
+      <div id="settings-section" style="display:none">
+
+        <div class="settings-grid">
+
+          <!-- General -->
+          <div class="card">
+            <h2>General</h2>
+            <div class="form-group">
+              <label for="school-name">Site Name</label>
+              <input type="text" id="school-name" placeholder="e.g. Delphi Academy">
+            </div>
+            <div class="form-group">
+              <label for="session-timeout">Session Timeout</label>
+              <select id="session-timeout">
+                <option value="1">1 hour</option>
+                <option value="4">4 hours</option>
+                <option value="8">8 hours</option>
+                <option value="24">24 hours</option>
+                <option value="168">7 days</option>
+              </select>
+              <span class="hint">How long before staff must log in again on the Alerts &amp; Bells pages.</span>
             </div>
           </div>
+
+          <!-- UniFi Controller -->
+          <div class="card">
+            <h2>UniFi Controller</h2>
+            <div class="form-group">
+              <label for="controller-ip">Controller IP / Hostname</label>
+              <input type="text" id="controller-ip" placeholder="192.168.1.1">
+              <span class="hint">Used in: https://&lt;IP&gt;/proxy/protect/integration/v1/…</span>
+            </div>
+            <div class="form-group">
+              <label for="api-key">API Key</label>
+              <div class="input-row">
+                <input type="password" id="api-key" placeholder="Paste API key here" autocomplete="off">
+                <button class="btn btn-sm btn-secondary" id="toggle-key-btn" onclick="toggleApiKey()">Show</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bell Trigger ID -->
+          <div class="card">
+            <h2>Bell Trigger ID</h2>
+            <div class="form-group">
+              <label for="bell-sound-id">Alarm-Manager Trigger ID</label>
+              <input type="text" id="bell-sound-id" placeholder="e.g. abc123def456">
+              <span class="hint">
+                Shared by all scheduled bells. Create a trigger in UniFi Protect under
+                <em>Alarm Manager &rarr; Webhooks</em>, then paste its ID here.
+              </span>
+            </div>
+          </div>
+
+          <!-- Admin Password -->
+          <div class="card">
+            <h2>Admin Password</h2>
+            <p class="hint" style="margin-bottom:12px">Used to access this Settings page.</p>
+            <div class="form-group">
+              <label for="new-admin-password">New Admin Password</label>
+              <input type="password" id="new-admin-password" placeholder="Leave blank to keep current" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label for="confirm-admin-password">Confirm New Password</label>
+              <input type="password" id="confirm-admin-password" autocomplete="new-password">
+            </div>
+          </div>
+
+          <!-- Staff Password -->
+          <div class="card">
+            <h2>Staff Password</h2>
+            <p class="hint" style="margin-bottom:12px">Used to access the Alerts &amp; Bells pages. Default: <code>alarm</code></p>
+            <div class="form-group">
+              <label for="new-user-password">New Staff Password</label>
+              <input type="password" id="new-user-password" placeholder="Leave blank to keep current" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label for="confirm-user-password">Confirm New Password</label>
+              <input type="password" id="confirm-user-password" autocomplete="new-password">
+            </div>
+          </div>
+
         </div>
 
-        <!-- Bell Trigger ID -->
+        <!-- Alarm Trigger IDs -->
         <div class="card">
-          <h2>Bell Trigger ID</h2>
-          <div class="form-group">
-            <label for="bell-sound-id">Alarm-Manager Trigger ID</label>
-            <input type="text" id="bell-sound-id" placeholder="e.g. abc123def456">
-            <span class="hint">
-              Shared by all scheduled bells. Create a trigger in UniFi Protect under
-              <em>Alarm Manager &rarr; Webhooks</em>, then paste its ID here.
-            </span>
+          <h2>Alarm Trigger IDs</h2>
+          <p class="hint" style="margin-bottom:14px">
+            Enter the Alarm Manager webhook Trigger ID for each alarm type.
+            Leave blank if that alarm is not yet in use.
+          </p>
+          <div class="table-wrap" style="margin-bottom:0">
+            <table class="alarm-config-table">
+              <thead>
+                <tr>
+                  <th>Alarm</th>
+                  <th>Trigger ID</th>
+                  <th style="white-space:nowrap">Play Count</th>
+                  <th style="white-space:nowrap">Delay (s)</th>
+                </tr>
+              </thead>
+              <tbody id="alarm-config-tbody">
+                <!-- populated by JS -->
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Admin Password -->
-        <div class="card">
-          <h2>Admin Password</h2>
-          <p class="hint" style="margin-bottom:12px">Used to access this Settings page.</p>
-          <div class="form-group">
-            <label for="new-admin-password">New Admin Password</label>
-            <input type="password" id="new-admin-password" placeholder="Leave blank to keep current" autocomplete="new-password">
-          </div>
-          <div class="form-group">
-            <label for="confirm-admin-password">Confirm New Password</label>
-            <input type="password" id="confirm-admin-password" autocomplete="new-password">
-          </div>
-        </div>
-
-        <!-- Staff Password -->
-        <div class="card">
-          <h2>Staff Password</h2>
-          <p class="hint" style="margin-bottom:12px">Used to access the Alerts &amp; Bells pages. Default: <code>alarm</code></p>
-          <div class="form-group">
-            <label for="new-user-password">New Staff Password</label>
-            <input type="password" id="new-user-password" placeholder="Leave blank to keep current" autocomplete="new-password">
-          </div>
-          <div class="form-group">
-            <label for="confirm-user-password">Confirm New Password</label>
-            <input type="password" id="confirm-user-password" autocomplete="new-password">
-          </div>
+        <div class="form-actions" style="margin-top:4px">
+          <button class="btn btn-primary" onclick="saveSettings()">Save All Settings</button>
+          <button class="btn btn-secondary" onclick="logout()">Logout</button>
         </div>
 
       </div>
-
-      <!-- Alarm Trigger IDs -->
-      <div class="card">
-        <h2>Alarm Trigger IDs</h2>
-        <p class="hint" style="margin-bottom:14px">
-          Enter the Alarm Manager webhook Trigger ID for each alarm type.
-          Leave blank if that alarm is not yet in use.
-        </p>
-        <div class="table-wrap" style="margin-bottom:0">
-          <table class="alarm-config-table">
-            <thead>
-              <tr>
-                <th>Alarm</th>
-                <th>Trigger ID</th>
-                <th style="white-space:nowrap">Play Count</th>
-                <th style="white-space:nowrap">Delay (s)</th>
-              </tr>
-            </thead>
-            <tbody id="alarm-config-tbody">
-              <!-- populated by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="form-actions" style="margin-top:4px">
-        <button class="btn" onclick="saveSettings()">Save All Settings</button>
-        <button class="btn btn-secondary" onclick="logout()">Logout</button>
-      </div>
-
-    </div>
-  </main>
+    </main>
+  </div><!-- /.page-content -->
 
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
@@ -174,8 +188,6 @@
         return null;
       }
     }
-
-    // ── Auth ──
 
     async function checkAuth() {
       const res  = await apiFetch('/api/auth/status');
@@ -213,18 +225,16 @@
       document.getElementById('login-password').focus();
     }
 
-    // ── Settings ──
-
     async function loadSettings() {
       const res = await apiFetch('/api/settings');
       if (!res || res.status === 401) { checkAuth(); return; }
       const cfg = await res.json();
       document.getElementById('login-section').style.display = 'none';
 
-      document.getElementById('school-name').value    = cfg.schoolName    || '';
-      document.getElementById('controller-ip').value  = cfg.controllerIP  || '';
-      document.getElementById('api-key').value        = cfg.apiKey        || '';
-      document.getElementById('bell-sound-id').value  = cfg.bellSoundId   || '';
+      document.getElementById('school-name').value     = cfg.schoolName    || '';
+      document.getElementById('controller-ip').value   = cfg.controllerIP  || '';
+      document.getElementById('api-key').value         = cfg.apiKey        || '';
+      document.getElementById('bell-sound-id').value   = cfg.bellSoundId   || '';
       document.getElementById('session-timeout').value = String(cfg.sessionTimeout || 8);
 
       const tbody = document.getElementById('alarm-config-tbody');
@@ -257,10 +267,10 @@
     }
 
     async function saveSettings() {
-      const newAdminPw    = document.getElementById('new-admin-password').value;
-      const confAdminPw   = document.getElementById('confirm-admin-password').value;
-      const newUserPw     = document.getElementById('new-user-password').value;
-      const confUserPw    = document.getElementById('confirm-user-password').value;
+      const newAdminPw  = document.getElementById('new-admin-password').value;
+      const confAdminPw = document.getElementById('confirm-admin-password').value;
+      const newUserPw   = document.getElementById('new-user-password').value;
+      const confUserPw  = document.getElementById('confirm-user-password').value;
 
       if (newAdminPw && newAdminPw !== confAdminPw) { toast('Admin passwords do not match', 'error'); return; }
       if (newUserPw  && newUserPw  !== confUserPw)  { toast('Staff passwords do not match',  'error'); return; }
@@ -290,10 +300,10 @@
       if (!res) return;
       if (res.ok) {
         toast('Settings saved successfully', 'success');
-        document.getElementById('new-admin-password').value    = '';
+        document.getElementById('new-admin-password').value     = '';
         document.getElementById('confirm-admin-password').value = '';
-        document.getElementById('new-user-password').value     = '';
-        document.getElementById('confirm-user-password').value = '';
+        document.getElementById('new-user-password').value      = '';
+        document.getElementById('confirm-user-password').value  = '';
       } else {
         toast('Failed to save settings', 'error');
       }

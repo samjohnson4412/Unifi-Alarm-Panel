@@ -4,68 +4,80 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alarm Panel — Status</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1 id="page-title">Loading&hellip;</h1>
-    <p class="subtitle">Live status of all connected UniFi devices.</p>
-  </header>
 
-  <nav>
-    <a href="/">Alerts</a>
-    <a href="/bells.html">Bells</a>
-    <a href="/cameras.html">Cameras</a>
-    <a href="/status.html" class="active">Status</a>
-    <a href="/settings.html" class="nav-right">&#9881; Settings</a>
-  </nav>
-
-  <!-- Login -->
-  <div id="login-section" style="display:none">
-    <div class="card narrow">
-      <h2>Staff Login</h2>
-      <div class="form-group">
-        <label for="login-password">Password</label>
-        <input type="password" id="login-password" autocomplete="current-password"
-          onkeydown="if(event.key==='Enter') login()">
+  <div class="app-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span class="header-title" id="page-title">Loading&hellip;</span>
       </div>
-      <div class="form-actions">
-        <button class="btn" onclick="login()">Login</button>
-      </div>
-      <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
     </div>
+    <nav>
+      <a href="/">Alerts</a>
+      <a href="/bells.html">Bells</a>
+      <a href="/cameras.html">Cameras</a>
+      <a href="/status.html" class="active">Status</a>
+      <a href="/settings.html" class="nav-right">&#9881; Settings</a>
+    </nav>
   </div>
 
-  <!-- Main -->
-  <div id="main-section" style="display:none">
-    <main>
-      <div class="refresh-toolbar">
-        <button class="btn btn-secondary" onclick="loadStatus()">&#8635; Refresh</button>
-        <span id="last-refresh" style="font-size:0.8rem;color:var(--text-muted)"></span>
-        <span id="auto-refresh-label" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto">Auto-refreshes every 30s</span>
-        <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
-      </div>
+  <div class="page-content">
 
-      <!-- NVR -->
-      <div class="card status-section">
-        <h2>NVR / Controller</h2>
-        <div id="nvr-info"><p class="hint">Loading…</p></div>
+    <!-- Login -->
+    <div id="login-section" style="display:none">
+      <div class="card narrow">
+        <h2>Staff Login</h2>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter') login()">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="login()">Login</button>
+        </div>
+        <p id="login-error" class="error-text" style="display:none">Incorrect password &mdash; try again.</p>
       </div>
+    </div>
 
-      <!-- Cameras -->
-      <div class="card status-section">
-        <h2>Cameras <span id="camera-count" class="device-count"></span></h2>
-        <div id="cameras-status"><p class="hint">Loading…</p></div>
-      </div>
-    </main>
-  </div>
+    <!-- Main -->
+    <div id="main-section" style="display:none">
+      <main>
+        <div class="refresh-toolbar">
+          <button class="btn btn-secondary" onclick="loadStatus()">&#8635; Refresh</button>
+          <span id="last-refresh" style="font-size:0.8rem;color:var(--text-muted)"></span>
+          <span id="auto-refresh-label" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto">Auto-refreshes every 30s</span>
+          <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- NVR -->
+        <div class="card status-section">
+          <h2>NVR / Controller</h2>
+          <div id="nvr-info"><p class="hint">Loading&hellip;</p></div>
+        </div>
+
+        <!-- Cameras -->
+        <div class="card status-section">
+          <h2>Cameras <span id="camera-count" class="device-count"></span></h2>
+          <div id="cameras-status"><p class="hint">Loading&hellip;</p></div>
+        </div>
+      </main>
+    </div>
+
+  </div><!-- /.page-content -->
 
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <script>
     let refreshTimer = null;
-
-    // ── Auth ──
 
     async function init() {
       const status = await apiFetch('/api/auth/user-status');
@@ -105,14 +117,12 @@
       const cfg = await apiFetch('/api/config/public');
       if (cfg) {
         document.title = `${cfg.schoolName} — Status`;
-        document.getElementById('page-title').textContent = `${cfg.schoolName} — Status`;
+        document.getElementById('page-title').textContent = `${cfg.schoolName}`;
       }
       document.getElementById('main-section').style.display = '';
       loadStatus();
       refreshTimer = setInterval(loadStatus, 30000);
     }
-
-    // ── Status ──
 
     async function loadStatus() {
       const data = await apiFetch('/api/devices/status');
@@ -172,8 +182,6 @@
           </table>
         </div>`;
     }
-
-    // ── Utilities ──
 
     function fmtUptime(seconds) {
       const d = Math.floor(seconds / 86400);

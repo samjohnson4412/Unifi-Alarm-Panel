@@ -4,120 +4,132 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alarm Panel — Bells</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1 id="page-title">Loading&hellip;</h1>
-    <p class="subtitle">Create and manage scheduled bells.</p>
-  </header>
 
-  <nav>
-    <a href="/">Alerts</a>
-    <a href="/bells.html" class="active">Bells</a>
-    <a href="/cameras.html">Cameras</a>
-    <a href="/status.html">Status</a>
-    <a href="/settings.html" class="nav-right">&#9881; Settings</a>
-  </nav>
-
-  <!-- ── Login ── -->
-  <div id="login-section" style="display:none">
-    <div class="card narrow">
-      <h2>Staff Login</h2>
-      <div class="form-group">
-        <label for="login-password">Password</label>
-        <input type="password" id="login-password" autocomplete="current-password"
-          onkeydown="if(event.key==='Enter') login()">
+  <div class="app-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span class="header-title" id="page-title">Loading&hellip;</span>
       </div>
-      <div class="form-actions">
-        <button class="btn" onclick="login()">Login</button>
-      </div>
-      <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
     </div>
+    <nav>
+      <a href="/">Alerts</a>
+      <a href="/bells.html" class="active">Bells</a>
+      <a href="/cameras.html">Cameras</a>
+      <a href="/status.html">Status</a>
+      <a href="/settings.html" class="nav-right">&#9881; Settings</a>
+    </nav>
   </div>
 
-  <!-- ── Main content ── -->
-  <div id="main-section" style="display:none">
-    <main>
-      <!-- Suspend toggle -->
-      <div class="suspend-bar" id="suspend-bar">
-        <div id="suspend-status" class="suspend-status"></div>
-        <button class="btn btn-sm" id="suspend-btn" onclick="toggleSuspend()">Loading…</button>
-        <button class="btn btn-secondary" style="margin-left:auto" onclick="logout()">Logout</button>
-      </div>
+  <div class="page-content">
 
-      <!-- ── Add / Edit form ── -->
-      <div class="card">
-        <input type="hidden" id="editing-id">
-
-        <div class="form-row">
-          <div class="form-group flex-3">
-            <label for="bell-name">Bell Name</label>
-            <input type="text" id="bell-name" placeholder="1st Period Start">
-          </div>
-          <div class="form-group flex-1">
-            <label for="bell-time">Time</label>
-            <input type="time" id="bell-time" value="08:00">
-          </div>
-          <div class="form-group flex-1">
-            <label for="bell-enabled">Enabled</label>
-            <select id="bell-enabled">
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          </div>
-        </div>
-
+    <!-- ── Login ── -->
+    <div id="login-section" style="display:none">
+      <div class="card narrow">
+        <h2>Staff Login</h2>
         <div class="form-group">
-          <label>Days of Week</label>
-          <div class="day-checkboxes">
-            <label><input type="checkbox" name="day" value="0"> Sun</label>
-            <label><input type="checkbox" name="day" value="1" checked> Mon</label>
-            <label><input type="checkbox" name="day" value="2" checked> Tue</label>
-            <label><input type="checkbox" name="day" value="3" checked> Wed</label>
-            <label><input type="checkbox" name="day" value="4" checked> Thu</label>
-            <label><input type="checkbox" name="day" value="5" checked> Fri</label>
-            <label><input type="checkbox" name="day" value="6"> Sat</label>
-          </div>
-          <div class="day-shortcuts">
-            <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5])">Mon&ndash;Fri</button>
-            <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5,6])">Mon&ndash;Sat</button>
-            <button class="btn btn-sm btn-secondary" onclick="setDays([0,1,2,3,4,5,6])">All Week</button>
-          </div>
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter') login()">
         </div>
-
         <div class="form-actions">
-          <button class="btn" id="save-btn" onclick="saveBell()">Add</button>
-          <button class="btn btn-secondary" id="cancel-btn" style="display:none" onclick="cancelEdit()">Cancel</button>
+          <button class="btn btn-primary" onclick="login()">Login</button>
         </div>
+        <p id="login-error" class="error-text" style="display:none">Incorrect password &mdash; try again.</p>
       </div>
+    </div>
 
-      <!-- ── Bells table ── -->
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Time</th>
-              <th>Days</th>
-              <th>Enabled</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="bells-tbody">
-            <tr><td colspan="5" class="td-empty">No bells scheduled yet.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </main>
-  </div>
+    <!-- ── Main content ── -->
+    <div id="main-section" style="display:none">
+      <main>
+        <!-- Suspend toggle -->
+        <div class="suspend-bar" id="suspend-bar">
+          <div id="suspend-status" class="suspend-status"></div>
+          <button class="btn btn-sm" id="suspend-btn" onclick="toggleSuspend()">Loading&hellip;</button>
+          <button class="btn btn-secondary" style="margin-left:auto" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- ── Add / Edit form ── -->
+        <div class="card">
+          <input type="hidden" id="editing-id">
+
+          <div class="form-row">
+            <div class="form-group flex-3">
+              <label for="bell-name">Bell Name</label>
+              <input type="text" id="bell-name" placeholder="1st Period Start">
+            </div>
+            <div class="form-group flex-1">
+              <label for="bell-time">Time</label>
+              <input type="time" id="bell-time" value="08:00">
+            </div>
+            <div class="form-group flex-1">
+              <label for="bell-enabled">Enabled</label>
+              <select id="bell-enabled">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Days of Week</label>
+            <div class="day-checkboxes">
+              <label><input type="checkbox" name="day" value="0"> Sun</label>
+              <label><input type="checkbox" name="day" value="1" checked> Mon</label>
+              <label><input type="checkbox" name="day" value="2" checked> Tue</label>
+              <label><input type="checkbox" name="day" value="3" checked> Wed</label>
+              <label><input type="checkbox" name="day" value="4" checked> Thu</label>
+              <label><input type="checkbox" name="day" value="5" checked> Fri</label>
+              <label><input type="checkbox" name="day" value="6"> Sat</label>
+            </div>
+            <div class="day-shortcuts">
+              <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5])">Mon&ndash;Fri</button>
+              <button class="btn btn-sm btn-secondary" onclick="setDays([1,2,3,4,5,6])">Mon&ndash;Sat</button>
+              <button class="btn btn-sm btn-secondary" onclick="setDays([0,1,2,3,4,5,6])">All Week</button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" id="save-btn" onclick="saveBell()">Add Bell</button>
+            <button class="btn btn-secondary" id="cancel-btn" style="display:none" onclick="cancelEdit()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- ── Bells table ── -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Time</th>
+                <th>Days</th>
+                <th>Enabled</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bells-tbody">
+              <tr><td colspan="5" class="td-empty">No bells scheduled yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+
+  </div><!-- /.page-content -->
 
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <script>
     const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-    // ── Auth ──
 
     async function init() {
       const status = await apiFetch('/api/auth/user-status');
@@ -156,14 +168,12 @@
       const cfg = await apiFetch('/api/config/public');
       if (cfg) {
         document.title = `${cfg.schoolName} — Bells`;
-        document.getElementById('page-title').textContent = `${cfg.schoolName} — Bells`;
+        document.getElementById('page-title').textContent = `${cfg.schoolName}`;
       }
       document.getElementById('main-section').style.display = '';
       loadBells();
       loadSuspendStatus();
     }
-
-    // ── Suspend toggle ──
 
     async function loadSuspendStatus() {
       const data = await apiFetch('/api/bells/suspend');
@@ -187,8 +197,6 @@
         toast(data.suspended ? 'Bells suspended' : 'Bells resumed', data.suspended ? 'error' : 'success');
       }
     }
-
-    // ── Utilities ──
 
     function esc(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -214,8 +222,6 @@
       }
     }
 
-    // ── Day helpers ──
-
     function setDays(selected) {
       document.querySelectorAll('input[name="day"]').forEach(cb => {
         cb.checked = selected.includes(parseInt(cb.value));
@@ -235,8 +241,6 @@
       if (JSON.stringify(s) === JSON.stringify([1,2,3,4,5,6]))   return 'Mon–Sat';
       return s.map(d => DAY_NAMES[d]).join(', ');
     }
-
-    // ── Load & render bells ──
 
     let bellsCache = [];
 
@@ -277,8 +281,6 @@
       if (action === 'delete') deleteBell(id, name);
     });
 
-    // ── CRUD ──
-
     async function saveBell() {
       const name    = document.getElementById('bell-name').value.trim();
       const time    = document.getElementById('bell-time').value;
@@ -309,7 +311,7 @@
       document.getElementById('bell-time').value      = bell.time;
       document.getElementById('bell-enabled').value   = bell.enabled ? 'true' : 'false';
       setDays(bell.days || []);
-      document.getElementById('save-btn').textContent     = 'Update';
+      document.getElementById('save-btn').textContent     = 'Update Bell';
       document.getElementById('cancel-btn').style.display = '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -320,7 +322,7 @@
       document.getElementById('bell-time').value          = '08:00';
       document.getElementById('bell-enabled').value       = 'true';
       setDays([1,2,3,4,5]);
-      document.getElementById('save-btn').textContent     = 'Add';
+      document.getElementById('save-btn').textContent     = 'Add Bell';
       document.getElementById('cancel-btn').style.display = 'none';
     }
 
