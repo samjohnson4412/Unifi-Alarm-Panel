@@ -4,81 +4,69 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alarm Panel — Cameras</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <header>
+    <h1 id="page-title">Loading&hellip;</h1>
+    <p class="subtitle">Live snapshots from connected cameras.</p>
+  </header>
 
-  <div class="app-header">
-    <div class="header-inner">
-      <div class="header-brand">
-        <div class="brand-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-        </div>
-        <span class="header-title" id="page-title">Loading&hellip;</span>
+  <nav>
+    <a href="/">Alerts</a>
+    <a href="/bells.html">Bells</a>
+    <a href="/cameras.html" class="active">Cameras</a>
+    <a href="/status.html">Status</a>
+    <a href="/settings.html" class="nav-right">&#9881; Settings</a>
+  </nav>
+
+  <!-- Login -->
+  <div id="login-section" style="display:none">
+    <div class="card narrow">
+      <h2>Staff Login</h2>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') login()">
       </div>
+      <div class="form-actions">
+        <button class="btn" onclick="login()">Login</button>
+      </div>
+      <p id="login-error" class="error-text" style="display:none">Incorrect password — try again.</p>
     </div>
-    <nav>
-      <a href="/">Alerts</a>
-      <a href="/bells.html">Bells</a>
-      <a href="/cameras.html" class="active">Cameras</a>
-      <a href="/status.html">Status</a>
-      <a href="/settings.html" class="nav-right">&#9881; Settings</a>
-    </nav>
   </div>
 
-  <div class="page-content">
-
-    <!-- Login -->
-    <div id="login-section" style="display:none">
-      <div class="card narrow">
-        <h2>Staff Login</h2>
-        <div class="form-group">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" autocomplete="current-password"
-            onkeydown="if(event.key==='Enter') login()">
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-primary" onclick="login()">Login</button>
-        </div>
-        <p id="login-error" class="error-text" style="display:none">Incorrect password &mdash; try again.</p>
+  <!-- Main -->
+  <div id="main-section" style="display:none">
+    <main>
+      <div class="refresh-toolbar">
+        <button class="btn btn-secondary" onclick="loadCameras()">&#8635; Refresh All</button>
+        <label style="text-transform:none;letter-spacing:0;font-size:0.875rem;color:var(--text-muted);display:flex;align-items:center;gap:8px">
+          Auto-refresh:
+          <select id="refresh-interval" onchange="setRefreshInterval()" style="width:auto">
+            <option value="0">Off</option>
+            <option value="10">10 s</option>
+            <option value="30" selected>30 s</option>
+            <option value="60">60 s</option>
+          </select>
+        </label>
+        <span id="last-refresh" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto"></span>
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
       </div>
-    </div>
 
-    <!-- Main -->
-    <div id="main-section" style="display:none">
-      <main>
-        <div class="refresh-toolbar">
-          <button class="btn btn-secondary" onclick="loadCameras()">&#8635; Refresh All</button>
-          <label style="text-transform:none;letter-spacing:0;font-size:0.84rem;color:var(--text-muted);display:flex;align-items:center;gap:8px">
-            Auto-refresh:
-            <select id="refresh-interval" onchange="setRefreshInterval()" style="width:auto">
-              <option value="0">Off</option>
-              <option value="10">10 s</option>
-              <option value="30" selected>30 s</option>
-              <option value="60">60 s</option>
-            </select>
-          </label>
-          <span id="last-refresh" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto"></span>
-          <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
-        </div>
-
-        <div id="camera-grid" class="camera-grid">
-          <p style="color:var(--text-muted)">Loading cameras&hellip;</p>
-        </div>
-      </main>
-    </div>
-
-  </div><!-- /.page-content -->
+      <div id="camera-grid" class="camera-grid">
+        <p style="color:var(--text-muted)">Loading cameras…</p>
+      </div>
+    </main>
+  </div>
 
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <script>
     let refreshTimer = null;
     let cameraList   = [];
+
+    // ── Auth ──
 
     async function init() {
       const status = await apiFetch('/api/auth/user-status');
@@ -118,14 +106,17 @@
       const cfg = await apiFetch('/api/config/public');
       if (cfg) {
         document.title = `${cfg.schoolName} — Cameras`;
-        document.getElementById('page-title').textContent = `${cfg.schoolName}`;
+        document.getElementById('page-title').textContent = `${cfg.schoolName} — Cameras`;
       }
+      // Restore saved refresh interval before starting the timer
       const saved = localStorage.getItem('cameraRefreshInterval');
       if (saved) document.getElementById('refresh-interval').value = saved;
       document.getElementById('main-section').style.display = '';
       loadCameras();
       setRefreshInterval();
     }
+
+    // ── Cameras ──
 
     async function loadCameras() {
       const data = await apiFetch('/api/cameras');
@@ -148,6 +139,7 @@
     function renderCameras() {
       const grid = document.getElementById('camera-grid');
 
+      // Check whether the same set of camera cards is already rendered
       const existingIds = [...grid.querySelectorAll('.camera-card[data-cam-id]')]
         .map(el => el.dataset.camId);
       const newIds = cameraList.map(c => c.id);
@@ -155,6 +147,7 @@
         newIds.every((id, i) => id === existingIds[i]);
 
       if (!isRefresh) {
+        // First load or camera list changed — build cards; snapshots load staggered
         grid.innerHTML = cameraList.map(cam => {
           const online = cam.state === 'CONNECTED';
           return `
@@ -172,27 +165,29 @@
                        alt="${esc(cam.name)}"
                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
                        onload="this.nextElementSibling.style.display='none'">
-                     <div class="camera-snapshot-placeholder" style="display:flex">Loading&hellip;</div>`
+                     <div class="camera-snapshot-placeholder" style="display:flex">Loading…</div>`
                   : `<div class="camera-snapshot-placeholder">Camera offline</div>`
                 }
               </div>
               <div class="camera-card-footer">
-                <span>${esc(cam.type || cam.modelKey || '')}</span>
+                <span style="color:var(--text-muted)">${esc(cam.type || cam.modelKey || '')}</span>
                 ${cam.host ? `<span style="margin-left:auto;font-family:monospace">${esc(cam.host)}</span>` : ''}
               </div>
             </div>
           `;
         }).join('');
 
+        // Stagger initial loads to avoid rate-limiting the controller
         grid.querySelectorAll('.camera-snapshot').forEach((img, i) => {
           setTimeout(() => { img.src = `/api/cameras/${img.dataset.camId}/snapshot`; }, i * 400);
         });
 
       } else {
+        // Auto-refresh: preload each new snapshot silently, swap only when ready — no black flash
         cameraList.forEach((cam, i) => {
           if (cam.state !== 'CONNECTED') return;
           const img = grid.querySelector(`.camera-snapshot[data-cam-id="${cam.id}"]`);
-          if (!img || !img.src) return;
+          if (!img || !img.src) return; // still on initial staggered load, leave it alone
           const newSrc = `/api/cameras/${cam.id}/snapshot?ts=${Date.now()}`;
           setTimeout(() => {
             const loader = new Image();
@@ -211,6 +206,8 @@
         refreshTimer = setInterval(loadCameras, secs * 1000);
       }
     }
+
+    // ── Utilities ──
 
     async function apiFetch(url, method = 'GET', body) {
       try {
